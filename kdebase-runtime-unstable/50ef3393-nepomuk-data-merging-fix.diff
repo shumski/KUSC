@@ -1,0 +1,178 @@
+commit 50ef33937d04c6e4b72e1d492c6cc1ef9f699151
+Author: Vishesh Handa <handa.vish@gmail.com>
+Date:   Tue Mar 13 18:23:06 2012 +0530
+
+    Merge duplicate statements in the ResourceMerger
+    
+    This happens in cases where two resources identifiy to the same resource and
+    their statements are resolved in the ResourceMerger. During the cardinality
+    checks, there exist identical duplicates (because of the merge) of certain
+    properties which result in cardinality errors.
+    
+    Also added a unit test.
+    
+    This should fix the problem with PIM Email Indexing
+    
+    CCMAIL: wstephenson@kde.org
+
+diff --git a/nepomuk/services/storage/resourcemerger.cpp b/nepomuk/services/storage/resourcemerger.cpp
+index 0aa4ae7..93d39be 100644
+--- a/nepomuk/services/storage/resourcemerger.cpp
++++ b/nepomuk/services/storage/resourcemerger.cpp
+@@ -509,20 +509,26 @@ Soprano::Node Nepomuk::ResourceMerger::resolveUnmappedNode(const Soprano::Node&
+     return newUri;
+ }
+ 
+-void Nepomuk::ResourceMerger::resolveBlankNodesInList(QList<Soprano::Statement> *stList)
++void Nepomuk::ResourceMerger::resolveBlankNodesInSet(QSet<Soprano::Statement> *stList)
+ {
+-    QMutableListIterator<Soprano::Statement> iter( *stList );
++    QSet<Soprano::Statement> newSet;
++
++    QSetIterator<Soprano::Statement> iter( *stList );
+     while( iter.hasNext() ) {
+-        Soprano::Statement &st = iter.next();
++        Soprano::Statement st = iter.next();
+ 
+         st.setSubject( resolveUnmappedNode(st.subject()) );
+         st.setObject( resolveUnmappedNode(st.object()) );
++
++        newSet.insert( st );
+     }
++
++    *stList = newSet;
+ }
+ 
+-void Nepomuk::ResourceMerger::removeDuplicatesInList(QList<Soprano::Statement> *stList)
++void Nepomuk::ResourceMerger::removeDuplicatesInList(QSet<Soprano::Statement> *stList)
+ {
+-    QMutableListIterator<Soprano::Statement> it( *stList );
++    QMutableSetIterator<Soprano::Statement> it( *stList );
+     while( it.hasNext() ) {
+         const Soprano::Statement &st = it.next();
+         if( st.subject().isBlank() || st.object().isBlank() )
+@@ -649,9 +655,9 @@ bool Nepomuk::ResourceMerger::merge( const Soprano::Graph& stGraph )
+     // First separate all the statements predicate rdf:type.
+     // and collect info required to check the types and cardinality
+     //
+-    QList<Soprano::Statement> remainingStatements;
+-    QList<Soprano::Statement> typeStatements;
+-    QList<Soprano::Statement> metadataStatements;
++    QSet<Soprano::Statement> remainingStatements;
++    QSet<Soprano::Statement> typeStatements;
++    QSet<Soprano::Statement> metadataStatements;
+ 
+     foreach( const Soprano::Statement & st, statements ) {
+         const QUrl subUri = getBlankOrResourceUri( st.subject() );
+@@ -676,7 +682,9 @@ bool Nepomuk::ResourceMerger::merge( const Soprano::Graph& stGraph )
+         // Get the cardinality
+         if( tree->maxCardinality( prop ) > 0 ) {
+             QPair<QUrl,QUrl> subPredPair( subUri, st.predicate().uri() );
+-            cardinality.insert( subPredPair, st.object() );
++            if( !cardinality.contains( subPredPair, st.object() ) ) {
++                cardinality.insert( subPredPair, st.object() );
++            }
+         }
+     }
+ 
+@@ -892,9 +900,9 @@ bool Nepomuk::ResourceMerger::merge( const Soprano::Graph& stGraph )
+     }
+ 
+     // Create all the blank nodes
+-    resolveBlankNodesInList( &typeStatements );
+-    resolveBlankNodesInList( &remainingStatements );
+-    resolveBlankNodesInList( &metadataStatements );
++    resolveBlankNodesInSet( &typeStatements );
++    resolveBlankNodesInSet( &remainingStatements );
++    resolveBlankNodesInSet( &metadataStatements );
+ 
+     // Push all these statements and get the list of all the modified resource
+     foreach( Soprano::Statement st, typeStatements ) {
+diff --git a/nepomuk/services/storage/resourcemerger.h b/nepomuk/services/storage/resourcemerger.h
+index 8cd4ad5..8258f52 100644
+--- a/nepomuk/services/storage/resourcemerger.h
++++ b/nepomuk/services/storage/resourcemerger.h
+@@ -74,13 +74,13 @@ namespace Nepomuk {
+         Soprano::Node resolveUnmappedNode( const Soprano::Node& node );
+ 
+         /// This modifies the list
+-        void resolveBlankNodesInList( QList<Soprano::Statement> *stList );
++        void resolveBlankNodesInSet( QSet<Soprano::Statement> *stList );
+ 
+         /**
+          * Removes all the statements that already exist in the model
+          * and adds them to m_duplicateStatements
+          */
+-        void removeDuplicatesInList( QList<Soprano::Statement> *stList );
++        void removeDuplicatesInList( QSet<Soprano::Statement> *stList );
+         QMultiHash<QUrl, Soprano::Statement> m_duplicateStatements;
+ 
+         QHash<QUrl, QUrl> m_mappings;
+diff --git a/nepomuk/services/storage/test/datamanagementmodeltest.cpp b/nepomuk/services/storage/test/datamanagementmodeltest.cpp
+index 0c37a5e..b4c8bfb 100644
+--- a/nepomuk/services/storage/test/datamanagementmodeltest.cpp
++++ b/nepomuk/services/storage/test/datamanagementmodeltest.cpp
+@@ -4669,8 +4669,36 @@ void DataManagementModelTest::testStoreResources_duplicates2()
+ 
+     int emailCount = m_model->listStatements( Node(), RDF::type(), NCO::EmailAddress() ).allStatements().size();
+     QCOMPARE( emailCount, 1 );
++
++    QVERIFY(!haveTrailingGraphs());
++    QVERIFY(!haveDataInDefaultGraph());
+ }
+ 
++void DataManagementModelTest::testStoreResources_duplicatesInMerger()
++{
++    SimpleResource contact1;
++    contact1.addType( NCO::PersonContact() );
++    contact1.setProperty( NCO::fullname(), QLatin1String("Rachel McAdams") );
++
++    SimpleResourceGraph graph;
++    graph << contact1;
++
++    m_dmModel->storeResources( graph, QLatin1String("appA") );
++    QVERIFY(!m_dmModel->lastError());
++
++    SimpleResource contact2;
++    contact2.addType( NCO::PersonContact() );
++    contact2.setProperty( NCO::fullname(), QLatin1String("Rachel McAdams") );
++    contact2.setProperty( NAO::prefLabel(), QLatin1String("Rachel McAdams") );
++
++    graph << contact2;
++
++    m_dmModel->storeResources( graph, QLatin1String("appA") );
++    QVERIFY(!m_dmModel->lastError());
++
++    QVERIFY(!haveTrailingGraphs());
++    QVERIFY(!haveDataInDefaultGraph());
++}
+ 
+ void DataManagementModelTest::testStoreResources_overwriteProperties()
+ {
+diff --git a/nepomuk/services/storage/test/datamanagementmodeltest.h b/nepomuk/services/storage/test/datamanagementmodeltest.h
+index 93dd913..ab87f3a 100644
+--- a/nepomuk/services/storage/test/datamanagementmodeltest.h
++++ b/nepomuk/services/storage/test/datamanagementmodeltest.h
+@@ -143,6 +143,7 @@ private Q_SLOTS:
+     void testStoreResources_kioProtocols();
+     void testStoreResources_duplicates();
+     void testStoreResources_duplicates2();
++    void testStoreResources_duplicatesInMerger();
+     void testStoreResources_overwriteProperties();
+     void testStoreResources_overwriteProperties_invalidCard();
+     void testStoreResources_correctDomainInStore();
+diff --git a/nepomuk/services/storage/test/qtest_dms.cpp b/nepomuk/services/storage/test/qtest_dms.cpp
+index 64949fd..9afd290 100644
+--- a/nepomuk/services/storage/test/qtest_dms.cpp
++++ b/nepomuk/services/storage/test/qtest_dms.cpp
+@@ -187,6 +187,10 @@ void Nepomuk::insertOntologies(Soprano::Model* _model, const QUrl& graph)
+     model.addStatement( NCO::Contact(), RDFS::subClassOf(), NCO::Role(), graph );
+     model.addStatement( NCO::Contact(), RDFS::subClassOf(), NAO::Party(), graph );
+ 
++    model.addStatement( NCO::PersonContact(), RDF::type(), RDFS::Resource(), graph );
++    model.addStatement( NCO::PersonContact(), RDF::type(), RDFS::Class(), graph );
++    model.addStatement( NCO::PersonContact(), RDFS::subClassOf(), NCO::Contact(), graph );
++
+     model.addStatement( NAO::Tag(), RDF::type(), RDFS::Class(), graph );
+     model.addStatement( NFO::FileDataObject(), RDF::type(), RDFS::Class(), graph );
+     model.addStatement( NFO::Folder(), RDF::type(), RDFS::Class(), graph );

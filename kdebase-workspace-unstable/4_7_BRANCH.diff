@@ -1,0 +1,7 @@
+--- a/a/BRANCH_STATUS
++++ b/b/BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 313e0c7ed3f574dfc38bb6dfe8d94a0a20e6c934
++git diff v4.7.2..origin/KDE/4.7
+diff --git a/doc/plasma-desktop/index.docbook b/doc/plasma-desktop/index.docbook
+index 697ed9b..21b458a 100644

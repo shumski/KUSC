@@ -1,0 +1,34 @@
+--- systemsettings/app/systemsettings.desktop	2011-10-20 22:52:49.000000000 +0200
++++ systemsettings/app/systemsettings.desktop	2011-10-25 18:16:59.288042602 +0200
+@@ -6,7 +6,7 @@
+ X-KDE-StartupNotify=true
+ OnlyShowIn=KDE;
+ 
+-GenericName=System Settings
++GenericName=Configure Desktop
+ GenericName[ar]=إعدادات النظام
+ GenericName[ast]=Preferencies del sistema
+ GenericName[be@latin]=Systemnyja nałady
+@@ -88,7 +88,7 @@
+ GenericName[zh_CN]=系统设置
+ GenericName[zh_TW]=系統設定
+ 
+-Name=System Settings
++Name=Configure Desktop
+ Name[ar]=إعدادات النظام
+ Name[ast]=Preferencies del sistema
+ Name[be]=Сістэмныя настаўленні
+@@ -175,4 +175,4 @@
+ Name[zh_TW]=系統設定
+ 
+ X-DBUS-StartupType=Unique
+-Categories=Qt;KDE;Settings;
++Categories=Qt;KDE;Settings;X-SuSE-core;Qt;Core;
+--- systemsettings/app/kdesystemsettings.desktop        2011-10-21 08:08:27.000000000 +0200
++++ systemsettings/app/kdesystemsettings.desktop        2011-10-21 20:15:04.235935203 +0200
+@@ -45,4 +45,4 @@
+ Name[zh_TW]=KDE 系統設定
+ 
+ X-DBUS-StartupType=Unique
+-Categories=Qt;KDE;Settings;
++Categories=Qt;KDE;Settings;X-SuSE-core;Qt;Core;

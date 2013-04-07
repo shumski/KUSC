@@ -1,0 +1,13 @@
+Index: kdeui/kernel/kglobalsettings.cpp
+===================================================================
+--- kdeui/kernel/kglobalsettings.cpp.orig
++++ kdeui/kernel/kglobalsettings.cpp
+@@ -344,7 +344,7 @@ QColor KGlobalSettings::activeTitleColor
+     return qt_colorref2qrgb(GetSysColor(COLOR_ACTIVECAPTION));
+ #else
+     KConfigGroup g( KGlobal::config(), "WM" );
+-    return g.readEntry( "activeBackground", QColor(48,174,232));
++    return g.readEntry( "activeBackground", QColor(106, 153, 213));
+ #endif
+ }
+ 

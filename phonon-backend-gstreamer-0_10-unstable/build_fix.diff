@@ -1,0 +1,12 @@
+diff -urB phonon-gstreamer/gstreamer/videosink.c new/gstreamer/videosink.c
+--- phonon-gstreamer/gstreamer/videosink.c	2012-09-27 13:11:39.142578250 +0200
++++ new/gstreamer/videosink.c	2012-09-27 13:15:16.654656867 +0200
+@@ -70,6 +70,7 @@
+ 
+ static gboolean p_gst_video_sink_set_caps(GstBaseSink *baseSink, GstCaps *caps)
+ {
++    return 1;
+ }
+ 
+ static GstFlowReturn p_gst_video_sink_render(GstBaseSink *baseSink,
+ 

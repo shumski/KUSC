@@ -1,0 +1,13 @@
+Index: kdecore/kdebug.areas
+===================================================================
+--- kdecore/kdebug.areas.orig
++++ kdecore/kdebug.areas
+@@ -729,6 +729,8 @@
+ 
+ 100200       kfs
+ 
++100300       kupdateapplet
++
+ # rosegarden
+ 
+ 200000       rosegarden

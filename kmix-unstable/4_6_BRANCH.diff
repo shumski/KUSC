@@ -1,0 +1,7 @@
+package: kdemultimedia-4.4.3.tar.bz2
+kdemod: kdemultimedia
+--- BRANCH_STATUS
++++ BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 1127686
++svn di between //tags/KDE/4.4.3/kdemultimedia and //branches/KDE/4.4/kdemultimedia

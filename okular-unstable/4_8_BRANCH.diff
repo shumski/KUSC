@@ -1,0 +1,7 @@
+--- a/BRANCH_STATUS
++++ b/BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 6606337b9bdf98111276d0fd3d803a644462cb28
++git diff v4.7.2..origin/KDE/4.7
+diff --git a/includes/CMakeLists.txt b/includes/CMakeLists.txt
+index a967a92..1c6907e 100644

@@ -1,0 +1,7 @@
+--- a/BRANCH_STATUS
++++ b/BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 60422714c6aafb60bac1f316b0051e1445539f46
++git diff v4.7.2..origin/KDE/4.7
+diff --git a/akregator/plugins/sharemicroblog/akregator_config_sharemicroblog.desktop b/akregator/plugins/sharemicroblog/akregator_config_sharemicroblog.desktop
+index c605c2b..58a86e5 100644

@@ -1,0 +1,29 @@
+--- startkde.cmake	2011-06-22 16:29:19.000000000 +0200
++++ startkde.cmake	2011-06-28 20:20:35.408688730 +0200
+@@ -88,6 +88,9 @@
+ mkdir -m 700 -p $kdehome
+ mkdir -m 700 -p $kdehome/share
+ mkdir -m 700 -p $kdehome/share/config
++if test -e /etc/kde4/share/config/startupconfigkeys ; then
++cp /etc/kde4/share/config/startupconfigkeys $kdehome/share/config/startupconfigkeys
++else
+ cat >$kdehome/share/config/startupconfigkeys <<EOF
+ kcminputrc Mouse cursorTheme 'Oxygen_White'
+ kcminputrc Mouse cursorSize ''
+@@ -102,6 +105,7 @@
+ kcmfonts General forceFontDPI 0
+ kdeglobals Locale Language '' # trigger requesting languages from KLocale
+ EOF
++fi
+ kstartupconfig4
+ returncode=$?
+ if test $returncode -ne 0; then
+@@ -181,7 +185,7 @@
+ 
+ libpath=`kde4-config --path lib | tr : '\n'`
+ 
+-for prefix in `echo "$libpath" | sed -n -e 's,/lib[^/]*/,/env/,p'`; do
++for prefix in `echo "$libpath" | sed -n -e 's,/lib[^/]*/,/env/,p'` /usr/share/kde4/env/; do
+   for file in "$prefix"*.sh; do
+     test -r "$file" && . "$file"
+   done

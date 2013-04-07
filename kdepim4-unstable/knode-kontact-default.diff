@@ -1,0 +1,13 @@
+Index: kontact/plugins/knode/knodeplugin.desktop
+===================================================================
+--- kontact/plugins/knode/knodeplugin.desktop.orig
++++ kontact/plugins/knode/knodeplugin.desktop
+@@ -13,7 +13,7 @@ X-KDE-KontactPluginHasSummary=false
+ X-KDE-PluginInfo-Name=kontact_knodeplugin
+ X-KDE-PluginInfo-Version=0.1
+ X-KDE-PluginInfo-License=GPL
+-X-KDE-PluginInfo-EnabledByDefault=false
++X-KDE-PluginInfo-EnabledByDefault=true
+ 
+ Comment=Kontact KNode Plugin
+ Comment[af]=Kontact KNode inprop module

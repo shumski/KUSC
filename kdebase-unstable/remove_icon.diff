@@ -1,0 +1,10 @@
+--- orig.kde-baseapps-4.10.40_20130111/konqueror/konqbrowser.desktop	2013-01-11 15:16:57.680045968 +0100
++++ kde-baseapps-4.10.40_20130111/konqueror/konqbrowser.desktop	2013-02-26 21:31:00.679966956 +0100
+@@ -1,7 +1,6 @@
+ [Desktop Entry]
+ Type=Application
+ Exec=kfmclient openProfile webbrowsing
+-Icon=konqueror
+ X-DocPath=konqueror/index.html
+ 
+ Name=Konqueror

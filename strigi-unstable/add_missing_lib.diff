@@ -1,0 +1,6 @@
+--- libstreamanalyzer/plugins/indexers/clucenengindexer/indexdump/CMakeLists.txt	2011-07-26 19:12:39.000000000 +0200
++++ libstreamanalyzer/plugins/indexers/clucenengindexer/indexdump/CMakeLists.txt	2011-12-03 09:52:05.062132856 +0100
+@@ -1,2 +1,2 @@
+ add_executable(index2dump indexdump.cpp ../tcharutils.cpp)
+-target_link_libraries(index2dump streamanalyzer ${CLUCENE1_LDFLAGS})
++target_link_libraries(index2dump streamanalyzer ${CLUCENE1_LDFLAGS} clucene-shared)

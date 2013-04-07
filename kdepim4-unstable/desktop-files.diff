@@ -1,0 +1,35 @@
+Index: akonadiconsole/akonadiconsole.desktop
+===================================================================
+--- akonadiconsole/akonadiconsole.desktop.orig
++++ akonadiconsole/akonadiconsole.desktop
+@@ -90,4 +90,5 @@ Comment[x-test]=xxAkonadi Management and
+ Comment[zh_CN]=用于管理和调试 Akonadi 的控制台
+ Comment[zh_TW]=Akonadi 管理與除錯主控台
+ Terminal=false
+-Categories=Qt;KDE;Development;
++Categories=Qt;KDE;Development;Debugger;X-KDE-Utilities-PIM;
++Hidden=true
+Index: ktimetracker/support/ktimetracker.desktop
+===================================================================
+--- ktimetracker/support/ktimetracker.desktop.orig
++++ ktimetracker/support/ktimetracker.desktop
+@@ -111,4 +111,4 @@ Type=Application
+ Terminal=false
+ X-KDE-StartupNotify=true
+ X-DBUS-StartupType=Multi
+-Categories=Qt;KDE;Utility;Office;Monitor;X-KDE-Utilities-PIM;
++Categories=Qt;KDE;Utility;X-KDE-Utilities-PIM;
+Index: kleopatra/kleopatra.desktop
+===================================================================
+--- kleopatra/kleopatra.desktop.orig
++++ kleopatra/kleopatra.desktop
+@@ -1,8 +1,7 @@
+ [Desktop Entry]
+ Type=Application
+-Categories=Qt;KDE;Utility;
++Categories=Qt;KDE;Utility;Security;X-KDE-Utilities-PIM;
+ Exec=kleopatra
+-Icon=kleopatra
+ Name=Kleopatra
+ Name[af]=Kleopatra
+ Name[ar]=كليوبترا

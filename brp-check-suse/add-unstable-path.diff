@@ -1,0 +1,23 @@
+diff -urNB brp-check-suse-1.0/brp-desktop.data/xdg_menu new.brp-check-suse-1.0/brp-desktop.data/xdg_menu
+--- brp-check-suse-1.0/brp-desktop.data/xdg_menu	2012-03-13 13:52:11.000000000 +0100
++++ new.brp-check-suse-1.0/brp-desktop.data/xdg_menu	2013-03-01 13:39:07.300776003 +0100
+@@ -1831,8 +1831,8 @@
+ 					if ($desktop->{'OnlyShowIn'} eq "GNOME") {
+ 					    $xtrapath .= ",icons/gnome";
+ 					}
+-					my @out = `find  \$RPM_BUILD_ROOT{/usr,/opt/kde3,/opt/gnome}/share/{pixmaps,icons/hicolor$xtrapath}{,{16x16,22x22,24x24,32x32,36x36,48x48,64x64,72x72,96x96,128x128,192x192,scalable}/{actions,animations,apps,categories,devices,emblems,emotes,filesystems,intl,mimetypes,places,status,stock}} -name $desktop->{Icon} -o -name $desktop->{Icon}.png -o -name $desktop->{Icon}.jpg -o -name $desktop->{Icon}.xpm -o -name $desktop->{Icon}.svg -o -name $desktop->{Icon}.svgz 2> /dev/null`;
+-					@out = `find  {/usr,/opt/kde3,/opt/gnome}/share/{pixmaps,icons/hicolor$xtrapath}{,{16x16,22x22,24x24,32x32,36x36,48x48,64x64,72x72,96x96,128x128,192x192,scalable}/{actions,animations,apps,categories,devices,emblems,emotes,filesystems,intl,mimetypes,places,status,stock}} -name $desktop->{Icon} -o -name $desktop->{Icon}.png -o -name $desktop->{Icon}.jpg -o -name $desktop->{Icon}.xpm -o -name $desktop->{Icon}.svg -o -name $desktop->{Icon}.svgz 2> /dev/null` unless @out;
++					my @out = `find  \$RPM_BUILD_ROOT{/usr,/opt/kde3,/opt/gnome,/opt/kde-unstable}/share/{pixmaps,icons/hicolor$xtrapath}{,{16x16,22x22,24x24,32x32,36x36,48x48,64x64,72x72,96x96,128x128,192x192,scalable}/{actions,animations,apps,categories,devices,emblems,emotes,filesystems,intl,mimetypes,places,status,stock}} -name $desktop->{Icon} -o -name $desktop->{Icon}.png -o -name $desktop->{Icon}.jpg -o -name $desktop->{Icon}.xpm -o -name $desktop->{Icon}.svg -o -name $desktop->{Icon}.svgz 2> /dev/null`;
++					@out = `find  {/usr,/opt/kde3,/opt/gnome,/opt/kde-unstable}/share/{pixmaps,icons/hicolor$xtrapath}{,{16x16,22x22,24x24,32x32,36x36,48x48,64x64,72x72,96x96,128x128,192x192,scalable}/{actions,animations,apps,categories,devices,emblems,emotes,filesystems,intl,mimetypes,places,status,stock}} -name $desktop->{Icon} -o -name $desktop->{Icon}.png -o -name $desktop->{Icon}.jpg -o -name $desktop->{Icon}.xpm -o -name $desktop->{Icon}.svg -o -name $desktop->{Icon}.svgz 2> /dev/null` unless @out;
+ 					if ( !@out and $desktop->{'X-SuSE-YaST-Call'} eq '' ){
+ 						$output .= "ERROR: Icon file not installed: $desktop->{file} ($desktop->{Icon})\n";
+ 						$validate_error = 1;
+@@ -1931,7 +1931,7 @@
+ {
+ 	my %used;
+ 	my $ret = '';
+-	foreach my $dir (split(/:/, $ENV{XDG_DATA_DIRS}), "/usr/share", "/opt/kde3/share", "/opt/gnome/share") {
++	foreach my $dir (split(/:/, $ENV{XDG_DATA_DIRS}), "/usr/share", "/opt/kde3/share", "/opt/gnome/share", "/opt/kde-unstable") {
+ 		next if defined $used{$dir};
+ 		next if check_file("$dir/desktop-directories") ne 'D';
+ 		$ret .= ':' if $ret ne '';

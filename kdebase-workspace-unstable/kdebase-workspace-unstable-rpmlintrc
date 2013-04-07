@@ -1,0 +1,2 @@
+addFilter("untranslated-desktop-file .*/usr/share/wallpapers/.*")
+

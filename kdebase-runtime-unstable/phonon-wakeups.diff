@@ -1,0 +1,37 @@
+--- phonon/xine/xinestream.cpp
++++ phonon/xine/xinestream.cpp
+@@ -374,6 +374,7 @@ bool XineStream::createStream()
+             videoPort = sink->threadSafeObject()->videoPort();
+         }
+     }
++#if 0
+     if (!audioPort) {
+         kDebug(610) << "creating xine_stream with null audio port";
+         audioPort = XineEngine::nullPort();
+@@ -382,6 +383,7 @@ bool XineStream::createStream()
+         kDebug(610) << "creating xine_stream with null video port";
+         videoPort = XineEngine::nullVideoPort();
+     }
++#endif
+     m_stream = xine_stream_new(XineEngine::xine(), audioPort, videoPort);
+     hackSetProperty("xine_stream_t", QVariant::fromValue(static_cast<void *>(m_stream)));
+     /*
+@@ -397,12 +399,12 @@ bool XineStream::createStream()
+     if (m_volume != 100) {
+         xine_set_param(m_stream, XINE_PARAM_AUDIO_AMP_LEVEL, m_volume);
+     }
+-//X     if (!m_audioPort.isValid()) {
+-//X         xine_set_param(m_stream, XINE_PARAM_IGNORE_AUDIO, 1);
+-//X     }
+-//X     if (!m_videoPort) {
+-//X         xine_set_param(m_stream, XINE_PARAM_IGNORE_VIDEO, 1);
+-//X     }
++    kDebug() << "************* audioPort *** " << audioPort << " *** VIDEO *** " << videoPort;
++    if (!audioPort)
++        xine_set_param(m_stream, XINE_PARAM_IGNORE_AUDIO, 1);
++    if (!videoPort)
++        xine_set_param(m_stream, XINE_PARAM_IGNORE_VIDEO, 1);
++
+     m_portMutex.unlock();
+     m_waitingForRewire.wakeAll();
+ 

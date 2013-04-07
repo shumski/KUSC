@@ -1,0 +1,29 @@
+--- server/src/nepomuk/queryserviceclient.h
++++ server/src/nepomuk/queryserviceclient.h
+@@ -27,6 +27,8 @@
+ class QUrl;
+ 
+ namespace Nepomuk {
++    typedef QHash<QString, QString> QStringHashMap;
++
+     namespace Query {
+ 
+         class Result;
+@@ -82,7 +84,7 @@
+              *
+              * \sa QueryParser
+              */
+-            bool query(const QString& query, const QHash<QString, QString> &encodedRps = ( QHash<QString, QString>() ) );
++            bool query( const QString& query, const QStringHashMap &encodedRps = QStringHashMap() );
+ 
+             /**
+              * Start a query using the Nepomuk query service.
+@@ -102,7 +104,7 @@
+              *
+              * \sa query(const QString&), close()
+              */
+-            bool blockingQuery( const QString& query, const QHash<QString, QString> &encodedRps = ( QHash<QString, QString>() ) );
++            bool blockingQuery( const QString& query, const QStringHashMap &encodedRps = QStringHashMap() );
+ 
+             /**
+              * Close the client, thus stop to monitor the query

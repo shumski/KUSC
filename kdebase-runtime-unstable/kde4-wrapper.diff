@@ -1,0 +1,16 @@
+Subject: Make sure the 'kde4' wrapper prefers KDE4 applications
+From: Lubos Lunak
+Patch-upstream: never
+
+Index: kde4
+===================================================================
+--- kde4
++++ kde4
+@@ -6,4 +6,7 @@
+ #  and make sure this script is in $PATH (e.g. make a symlink if necessary).
+ #
+ 
++PATH=${PATH/\/opt\/kde3\/bin:}:/opt/kde3/bin
++export PATH
++
+ exec "$@"

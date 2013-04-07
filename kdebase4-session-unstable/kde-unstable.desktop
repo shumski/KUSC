@@ -1,0 +1,9 @@
+[Desktop Entry]
+X-SuSE-translate=true
+Encoding=UTF-8
+Type=XSession
+Exec=/opt/kde-unstable/bin/startkde-unstable
+TryExec=/opt/kde-unstable/bin/startkde-unstable
+Name=Unstable KDE Plasma Workspace
+Comment=The desktop made by KDE
+

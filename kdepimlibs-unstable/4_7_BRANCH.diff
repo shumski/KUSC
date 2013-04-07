@@ -1,0 +1,5 @@
+--- a/BRANCH_STATUS
++++ b/BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 231a3ccc536c23bd6c1e3dc8198842c457a6c17a
++git diff v4.7.2..origin/KDE/4.7

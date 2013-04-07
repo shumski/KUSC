@@ -1,0 +1,20 @@
+<aggregatelist>
+  <aggregate project="KDE:Qt">
+    <package>libqt4</package>
+    <package>libQtWebKit4</package>
+    <package>libqt4-devel-doc</package>
+    <package>libqt4-devel-doc-data</package>
+    <package>libqt4-sql-plugins</package>
+    <package>python-sip</package>
+    <package>python-qt4</package>
+    <package>libqca2</package>
+    <package>libqjson</package>
+    <package>libdbusmenu-qt</package>
+    <package>qt-creator</package>
+    <package>qscintilla</package>
+    <package>python-qscintilla</package>
+    <package>qt-gstreamer</package>
+  </aggregate>
+</aggregatelist>
+
+ 

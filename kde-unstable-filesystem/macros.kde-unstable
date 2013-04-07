@@ -1,0 +1,136 @@
+%_kde_unstable_prefix     /opt/kde-unstable
+%_kde_unstable_bindir     %{_kde_unstable_prefix}/bin
+%_kde_unstable_datadir    %{_kde_unstable_prefix}/share
+%_kde_unstable_includedir %{_kde_unstable_prefix}/include
+%_kde_unstable_libdir     %{_kde_unstable_prefix}/%{_lib}
+%_kde_unstable_mandir     %{_kde_unstable_prefix}/share/man
+%_kde_unstable_sbindir    %{_kde_unstable_prefix}/sbin
+%_kde_unstable_sysconfdir %{_kde_unstable_prefix}/etc
+%_kde_unstable_py_sitedir %{_kde_unstable_libdir}/python2.7/site-packages
+
+%_kde_unstable_applicationsdir %{_kde_unstable_datadir}/applications/kde4
+%_kde_unstable_iconsdir        %{_kde_unstable_datadir}/icons
+%_kde_unstable_wallpapersdir   %{_kde_unstable_datadir}/wallpapers
+
+%_kde_unstable_sharedir        %{_kde_unstable_datadir}/kde4
+%_kde_unstable_appsdir         %{_kde_unstable_sharedir}/apps
+%_kde_unstable_configdir       %{_kde_unstable_sharedir}/config
+%_kde_unstable_configkcfgdir   %{_kde_unstable_sharedir}/config.kcfg
+%_kde_unstable_servicesdir     %{_kde_unstable_sharedir}/services
+%_kde_unstable_servicetypesdir %{_kde_unstable_sharedir}/servicetypes
+
+%_kde_unstable_docdir          %{_kde_unstable_datadir}/doc/kde
+%_kde_unstable_htmldir         %{_kde_unstable_docdir}/HTML
+
+%_kde_unstable_modulesdir      %{_kde_unstable_libdir}/kde4
+%_kde_unstable_libexecdir      %{_kde_unstable_modulesdir}/libexec
+%_kde_unstable_pkg_configdir   %{_kde_unstable_libdir}/pkgconfig
+
+%_kde_unstable_platform_version 4.10.40
+%_kde_unstable_pimlibs_version  4.10.40
+%_kde_unstable_akonadi_version  1.9.0
+
+%kde_unstable_runtime_requires Requires: kdebase-runtime-unstable >= %_kde_unstable_platform_version libqt4-x11 >= 4.8.0
+%kde_unstable_pimlibs_requires Requires: kdepimlibs-unstable      >= %_kde_unstable_pimlibs_version
+%kde_unstable_akonadi_requires Requires: akonadi-runtime-unstable  >= %_kde_unstable_akonadi_version akonadi-runtime-unstable < 1.10.40
+
+%_kde_unstable_build_type release
+
+%kde_unstable_makeinstall export CFLAGS=$RPM_OPT_FLAGS && export CXXFLAGS=$RPM_OPT_FLAGS && export LDFLAGS="-Wl,-Bsymbolic-functions $LDFLAGS" && export LD_LIBRARY_PATH=%{_kde_unstable_libdir}:$LD_LIBRARY_PATH && export PATH=%{_kde_unstable_prefix}:$PATH && export PKG_CONFIG_PATH=%{_kde_unstable_pkg_configdir}:$PKG_CONFIG_PATH && export CMAKE_LIBRARY_PATH=%{_kde_unstable_libdir}:$CMAKE_LIBRARY_PATH && make DESTDIR=%{?buildroot:%{buildroot}} install/fast
+  
+%cmake_kde_unstable(d:) \
+  export CFLAGS=$RPM_OPT_FLAGS \
+  export CXXFLAGS=$RPM_OPT_FLAGS \
+  export LDFLAGS="-Wl,-Bsymbolic-functions $LDFLAGS" \
+  export LD_LIBRARY_PATH=%{_kde_unstable_libdir}:$LD_LIBRARY_PATH \
+  export PKG_CONFIG_PATH=%{_kde_unstable_pkg_configdir}:$PKG_CONFIG_PATH \
+  export PATH=%{_kde_unstable_prefix}:$PATH \
+  export CMAKE_LIBRARY_PATH=%{_kde_unstable_libdir}:$CMAKE_LIBRARY_PATH \
+  _kde_libsuffix=$(echo %_lib | cut -b4-) \
+  test -n "`which icerun 2>/dev/null`" && icerun=" -DKDE4_SERIALIZE_TOOL=icerun" \
+  bdir=. \
+  %{-d:dir=%{-d*} \
+  mkdir $dir \
+  cd $dir \
+  bdir=.. } \
+  cmake -DCMAKE_SKIP_RPATH=ON \\\
+      -DCMAKE_INSTALL_PREFIX=%{_kde_unstable_prefix} \\\
+      -DLIBEXEC_INSTALL_DIR:PATH=%{_kde_unstable_libexecdir} \\\
+      -DLIB_SUFFIX="$_kde_libsuffix" \\\
+      -DCMAKE_BUILD_TYPE=%{_kde_unstable_build_type} \\\
+      -DKDE4_BUILD_TESTS=OFF \\\
+       $icerun $bdir %* \
+%{nil}
+
+%create_subdir_filelist(d:f:o:v:) \
+  %{!-d:echo -e "\\nERROR: missing parameter for macro create_subdir_filelist\\n" ; exit 1 ; } \
+  filelist=%{-f:%{-f*}}%{!-f:%{-d*}} \
+  filelist=${filelist#*/} \
+  if test -e doc/%{-d*}; then \
+    pushd doc/%{-d*} \
+    make DESTDIR=$RPM_BUILD_ROOT.%{-d*} install \
+    popd \
+  fi \
+  pushd %{-d*} \
+  make DESTDIR=$RPM_BUILD_ROOT.%{-d*} install \
+  mkdir -p $RPM_BUILD_DIR/%buildsubdir/filelists \
+  { \
+    echo "%%defattr(-,root,root,755)" \
+    if test -n "%{-v*}"; then \
+      devel_filelist=%{-v*} \
+      devel_filelist=${devel_filelist#*/} \
+      { \
+	echo "%%defattr(-,root,root,755)" \
+	find $RPM_BUILD_ROOT.%{-d*} \\( \\\
+	     -path "$RPM_BUILD_ROOT.%{-d*}/opt/kde-unstable/include/*" \\( -type f -o -type l \\) -o \\\
+	     -path "$RPM_BUILD_ROOT.%{-d*}/opt/kde-unstable/share/kde4/apps/cmake/modules/*" -type f -o \\\
+	     -name '*.so' -type l \\) -printf "/%%P\\n" \
+      } | tee -a $RPM_BUILD_DIR/%buildsubdir/filelists/$devel_filelist | \
+      sed -e '/^%%defattr/d' -e 's/^/%%exclude /' \
+    fi \
+    find $RPM_BUILD_ROOT.%{-d*} \\\
+	 \\( -path "$RPM_BUILD_ROOT.%{-d*}/opt/kde-unstable/share/doc/kde/HTML/en/%{-d*}" -o \\\
+	    -path "$RPM_BUILD_ROOT.%{-d*}/opt/kde-unstable/share/doc/kde/HTML/en/%{-d*}/*" -o \\\
+	    -path "$RPM_BUILD_ROOT.%{-d*}/opt/kde-unstable/share/kde4/apps/%{-d*}" -o \\\
+	    -path "$RPM_BUILD_ROOT.%{-d*}/opt/kde-unstable/share/kde4/apps/%{-d*}/*" \\) \\\
+	 -type d -printf "%%%%dir /%%P\\n" -o \\\
+    	 \\( -type f -o -type l \\) -printf "/%%P\\n" \
+  } | \
+  sed -r "s/man\\/man([1-9])\\/(.*)\\.[1-9]$/man\\/man\\1\\/\\2\\.\\1.gz/;s,^/opt/kde-unstable/share/doc/kde/HTML/(.[^/])/,%%doc %%lang(\\1) &," >> $RPM_BUILD_DIR/%buildsubdir/filelists/$filelist \
+  rm -rf $RPM_BUILD_ROOT.%{-d*} \
+  popd \
+%{nil}
+
+%create_exclude_filelist \
+  pushd $RPM_BUILD_DIR/%buildsubdir/ \
+  for f in filelists/*; do \
+    case $f in \
+    filelists/exclude) ;; \
+    *) sed -e '/^%%defattr/d' -e 's/^%%exclude //' -e 's/^/%%exclude /' "$f";; \
+    esac \
+  done >filelists/exclude \
+  popd \
+%{nil}
+
+%__spec_clean_post rm -rf filelists
+
+%kde_unstable_post_install \
+        if test -e /usr/lib/rpm/suse_update_desktop_file.sh; then \
+               find $RPM_BUILD_ROOT/opt/kde-unstable/share \\\
+                        -name '*.desktop' -o -name '*.directory' 2> /dev/null | while read file; do \
+                       test -r "$file" || continue \
+                       grep -q "^X-SuSE-translate=" "$file" && continue \
+                       case "$file" in \
+                        */.hidden/*) \
+                                %suse_update_desktop_file -n "$file" \
+                                ;; \
+                         *) \
+                                %suse_update_desktop_file "$file" \
+                                ;; \
+                        esac \
+                done \
+        fi \
+%{nil}
+
+%make_jobs \
+  %{__make} %{?_smp_mflags} VERBOSE=1

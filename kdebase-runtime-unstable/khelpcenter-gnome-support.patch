@@ -1,0 +1,266 @@
+Subject: parse and display gnome apps' help files
+From: wstephenson@suse.de
+Patch-upstream: no
+Index: khelpcenter/table-of-contents.xslt
+===================================================================
+--- khelpcenter/table-of-contents.xslt.orig
++++ khelpcenter/table-of-contents.xslt
+@@ -8,6 +8,12 @@
+ </table-of-contents>
+ </xsl:template>
+ 
++<xsl:template match="article">
++<table-of-contents>
++<xsl:apply-templates select="sect1"/>
++</table-of-contents>
++</xsl:template>
++
+ <xsl:template match="chapter">
+ <chapter>
+ <title><xsl:value-of select="title"/></title>
+@@ -20,7 +26,15 @@
+ <section>
+ <title><xsl:value-of select="title"/></title>
+ <anchor><xsl:value-of select="@id"/></anchor>
++<xsl:apply-templates select="sect2"/>
+ </section>
+ </xsl:template>
+ 
++<xsl:template match="sect2">
++<subsection>
++<title><xsl:value-of select="title"/></title>
++<anchor><xsl:value-of select="@id"/></anchor>
++</subsection>
++</xsl:template>
++
+ </xsl:stylesheet>
+Index: khelpcenter/navigatorappitem.cpp
+===================================================================
+--- khelpcenter/navigatorappitem.cpp.orig
++++ khelpcenter/navigatorappitem.cpp
+@@ -21,6 +21,8 @@
+ #include "navigatorappitem.h"
+ #include "docentry.h"
+ 
++#include <stdlib.h>
++
+ #include <KDebug>
+ #include <KService>
+ #include <KServiceGroup>
+@@ -132,6 +134,37 @@ void NavigatorAppItem::populate( bool re
+ 
+ QString NavigatorAppItem::documentationURL( const KService *s )
+ {
++  static QString desktop;
++  if (desktop.isNull()) {
++    QString win_man = getenv("WINDOWMANAGER");
++    if (win_man.contains ("gnome", Qt::CaseInsensitive))
++      desktop = "GNOME";
++    else if (win_man.contains ("kde", Qt::CaseInsensitive))
++      desktop = "KDE";
++    else
++      desktop = "";
++    kDebug() << desktop << endl;
++  };
++
++  QString onlyShowIn = s->property("OnlyShowIn", QVariant::String).toString();
++
++  kDebug() << onlyShowIn << endl;
++
++  if ( !onlyShowIn.isNull() ) {
++    if (desktop.isEmpty())
++      return QString();
++    QStringList list = onlyShowIn.split (QLatin1Char(';'));
++    if ( ! list.contains (desktop) )
++      return QString();
++  }
++
++  QString notShowIn = s->property("NotShowIn", QVariant::String).toString();
++  if ( !notShowIn.isNull() ) {
++    QStringList list = notShowIn.split (QLatin1Char(';'));
++    if ( list.contains (desktop) )
++      return QString();
++  }
++
+   QString docPath = s->property( QLatin1String("DocPath") ).toString();
+   if ( docPath.isEmpty() ) {
+     docPath = s->property( QLatin1String("X-DocPath") ).toString();
+@@ -140,7 +173,7 @@ QString NavigatorAppItem::documentationU
+     }
+   }
+ 
+-  if ( docPath.startsWith( QLatin1String("file:")) || docPath.startsWith( QLatin1String("http:") ) )
++  if ( docPath.startsWith( QLatin1String("file:")) || docPath.startsWith( QLatin1String("http:") ) || docPath.startsWith( "ghelp:" ))
+     return docPath;
+ 
+   return QLatin1String( "help:/" ) + docPath;
+Index: khelpcenter/docentry.h
+===================================================================
+--- khelpcenter/docentry.h.orig
++++ khelpcenter/docentry.h
+@@ -4,12 +4,14 @@
+ 
+ #include <QString>
+ #include <QList>
++#include <KDesktopFile>
+ 
+ namespace KHC {
+ 
+   class DocEntry
+   {
+     public:
++      static bool isForRunningDesktopEnvironment(const KDesktopFile & desktopFile);
+       typedef QList<DocEntry *> List;
+ 
+       DocEntry();
+Index: khelpcenter/docentry.cpp
+===================================================================
+--- khelpcenter/docentry.cpp.orig
++++ khelpcenter/docentry.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include <QRegExp>
+ #include <QFileInfo>
++#include <stdlib.h>
+ 
+ #include <KDebug>
+ #include <KDesktopFile>
+@@ -14,6 +15,43 @@
+ 
+ using namespace KHC;
+ 
++bool DocEntry::isForRunningDesktopEnvironment(const KDesktopFile & desktopFile)
++{
++  bool result = true;
++  static QString desktop;
++  if (desktop.isNull()) {
++    QString win_man = getenv("WINDOWMANAGER");
++    if (win_man.contains ("gnome", Qt::CaseInsensitive))
++      desktop = "GNOME";
++    else if (win_man.contains ("kde", Qt::CaseInsensitive))
++      desktop = "KDE";
++    else
++      desktop = "";
++    kDebug() << "Navigator::desktop = " << desktop << endl;
++  };
++
++  KConfigGroup desktopGroup = desktopFile.desktopGroup();
++  QString onlyShowIn = desktopGroup.readEntry ("OnlyShowIn");
++
++  kDebug() << desktopFile.fileName() << "  onlyShowIn = " << onlyShowIn << endl;
++
++  if ( !onlyShowIn.isEmpty() ) {
++    if (desktop.isEmpty())
++      result = false;;
++    QStringList list = onlyShowIn.split (QLatin1Char(';'));
++    if ( ! list.contains (desktop) )
++      result = false;;
++  }
++
++  QString notShowIn = desktopGroup.readEntry ("NotShowIn");
++  if ( !notShowIn.isEmpty() ) {
++    QStringList list = notShowIn.split (QLatin1Char(';'));
++    if ( list.contains (desktop) )
++      result = false;;
++  }
++  return result;
++}
++
+ DocEntry::DocEntry()
+ {
+   init();
+@@ -204,6 +242,9 @@ bool DocEntry::isDirectory() const
+ bool DocEntry::readFromFile( const QString &fileName )
+ {
+   KDesktopFile file( fileName );
++  if (!isForRunningDesktopEnvironment(file)) {
++    return false;
++  }
+   KConfigGroup desktopGroup = file.desktopGroup();
+ 
+   mName = file.readName();
+Index: khelpcenter/navigator.cpp
+===================================================================
+--- khelpcenter/navigator.cpp.orig
++++ khelpcenter/navigator.cpp
+@@ -65,6 +65,7 @@
+ #include "searchwidget.h"
+ #include "searchengine.h"
+ #include "docmetainfo.h"
++#include "docentry.h"
+ #include "docentrytraverser.h"
+ #include "glossary.h"
+ #include "toc.h"
+@@ -268,6 +269,11 @@ void Navigator::createItemFromDesktopFil
+                                            const QString &file )
+ {
+     KDesktopFile desktopFile( file );
++
++    if (!DocEntry::isForRunningDesktopEnvironment(desktopFile)) {
++      return;
++    }
++
+     QString docPath = desktopFile.readDocPath();
+     if ( !docPath.isNull() ) {
+       // First parameter is ignored if second is an absolute path
+@@ -310,6 +316,9 @@ void Navigator::selectItem( const KUrl &
+   {
+      alternativeURL.setQuery("anchor="+url.ref());
+      alternativeURL.setRef(QString());
++  } else if (url.url().endsWith("/index.html"))
++  {
++    alternativeURL = KUrl (url.url().left (url.url().length() - strlen ("/index.html")));
+   }
+ 
+   // If the navigator already has the given URL selected, do nothing.
+Index: khelpcenter/navigatoritem.cpp
+===================================================================
+--- khelpcenter/navigatoritem.cpp.orig
++++ khelpcenter/navigatoritem.cpp
+@@ -96,14 +96,42 @@ void NavigatorItem::scheduleTOCBuild()
+     mToc = new TOC( this );
+ 
+     kDebug( 1400 ) << "Trying to build TOC for " << entry()->name() << endl;
+-    mToc->setApplication( url.directory() );
++    if (url.directory() != "/") 
++      mToc->setApplication( url.directory() );
++    else
++      mToc->setApplication( url.path() );
+     QString doc = View::langLookup( url.path() );
+     // Enforce the original .docbook version, in case langLookup returns a
+     // cached version
+     if ( !doc.isNull() ) {
+-      int pos = doc.indexOf( ".html" );
+-      if ( pos >= 0 ) {
+-        doc.replace( pos, 5, ".docbook" );
++      if (doc.endsWith( ".html" )) {
++        doc = doc.left (doc.length() - 5) + ".docbook";
++      }
++
++      QFileInfo di (doc);
++      if (!di.isFile()) {
++
++        int last_slash = doc.lastIndexOf ('/');
++        if (last_slash >= 1) {
++
++          QString filename = doc.right(doc.length() - last_slash - 1);
++          if (filename == "index.html" || filename == "") {
++
++            int slash2 = doc.lastIndexOf('/', last_slash -1);
++            if (slash2 != -1 && slash2 != 0) {
++
++              int slash3 = doc.lastIndexOf('/', slash2 - 1);
++              if (slash3 != -1) {
++                QString xml_file = doc.left(last_slash) + "/" + doc.mid(slash3 + 1, slash2 - (slash3 + 1)) + ".xml";
++                kDebug() << "xml_file " << xml_file << endl;
++                QFileInfo fi(xml_file);
++                if (fi.exists())
++                  doc = xml_file;
++
++              }
++            }
++          }
++        }
+       }
+       kDebug( 1400 ) << "doc = " << doc;
+ 

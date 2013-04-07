@@ -1,0 +1,13 @@
+<services>
+  <service name="tar_scm">
+   <param name="versionprefix">2.7.40git</param>
+   <param name="url">git://anongit.kde.org/amarok</param>
+   <param name="scm">git</param>
+   <param name="filename">amarok</param>
+  </service>
+  <service name="recompress">
+   <param name="file">*.tar</param>
+   <param name="compression">bz2</param>
+  </service>
+  <service name="set_version"/>
+</services>

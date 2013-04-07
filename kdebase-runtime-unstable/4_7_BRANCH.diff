@@ -1,0 +1,7 @@
+--- a/BRANCH_STATUS
++++ b/BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 3bb47ee3b3326105e8fe5b1be6c9ca059dfff626
++git diff v4.7.2..origin/KDE/4.7
+diff --git a/activitymanager/kactivitymanagerd.desktop b/activitymanager/kactivitymanagerd.desktop
+index 6218dd5..d6d197f 100644

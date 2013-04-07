@@ -1,0 +1,27 @@
+Index: libs/kdm/kgreet_generic.cpp
+===================================================================
+--- libs/kdm/kgreet_generic.cpp.orig	2010-07-06 08:54:28.000000000 +0200
++++ libs/kdm/kgreet_generic.cpp	2010-11-21 20:47:03.809718230 +0100
+@@ -141,7 +141,9 @@ KGenericGreeter::textMessage(const char
+ 
+     if (m_infoMsgs.isEmpty())
+         revive();
+-    QString qtext = QString::fromUtf8(text);
++    // PAM does not translate these
++    //(void) I18N_NOOP("");
++    QString qtext = i18n( text );
+     m_infoMsgs.append(qtext);
+     QLabel *label = new QLabel(qtext, m_parentWidget);
+     m_grid->addWidget(label, m_line++, 0, 1, 2);
+@@ -169,7 +171,10 @@ KGenericGreeter::textPrompt(const char *
+     else
+         m_infoMsgs.clear();
+ 
+-    QLabel *label = new QLabel(QString::fromUtf8(prompt).trimmed());
++    // PAM does not translate these
++    ( void ) I18N_NOOP( "Password: " );
++    ( void ) I18N_NOOP( "Password or swipe finger: " );
++    QLabel *label = new QLabel(i18n( prompt ).trimmed());
+     m_grid->addWidget(label, m_line, 0);
+     m_children.append(label);
+     m_echo = echo;

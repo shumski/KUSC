@@ -1,0 +1,61 @@
+--- kwin/clients/oxygen/oxygenclient.cpp
++++ kwin/clients/oxygen/oxygenclient.cpp
+@@ -59,6 +59,9 @@
+ #include "oxygenbutton.h"
+ #include "oxygen.h"
+ 
++#define logourl "/usr/share/kde4/apps/kwin/titlebar_decor.png"
++#define logooffset 5
++
+ namespace Oxygen
+ {
+ 
+@@ -93,6 +96,7 @@
+     , helper_(*globalHelper)
+ {
+     qAddPostRoutine(oxkwincleanupBefore);
++    logo.load(logourl);
+ }
+ 
+ OxygenClient::~OxygenClient()
+@@ -327,7 +331,7 @@
+     const int titleWidth = frame.width() -
+             titleEdgeLeft - layoutMetric(LM_TitleEdgeRight) -
+             buttonsLeftWidth() - buttonsRightWidth() -
+-            marginLeft - marginRight;
++            marginLeft - marginRight - logo.width() - logooffset;
+ 
+     // draw shadow
+ 
+@@ -364,6 +368,12 @@
+     painter.drawText(titleLeft, titleTop-1, titleWidth, titleHeight,  // -1 is to go into top resizearea
+               OxygenFactory::titleAlignment() | Qt::AlignVCenter, caption());
+ 
++    if (isActive()) {
++        QFontMetrics fm(options()->font(isActive(), false));
++        painter.drawImage(titleEdgeLeft + layoutMetric(LM_TitleEdgeRight) + buttonsLeftWidth() 
++         + qMin(fm.width(caption()), titleWidth) + logooffset, titleTop, logo);
++    }
++
+     painter.setRenderHint(QPainter::Antialiasing);
+ 
+     // Draw dividing line
+@@ -389,7 +399,7 @@
+         }
+ 
+         if (align & Qt::AlignLeft) {
+-            int left = titleLeft + QFontMetrics(options()->font(isActive(), false)).width(caption()) + 4;
++            int left = titleLeft + QFontMetrics(options()->font(isActive(), false)).width(caption()) + 4 + logo.width() + logooffset;
+             int right = titleLeft + titleWidth;
+             if (left < right)
+                 drawStripes(&painter, palette, left, right, titleTop+6);
+--- kwin/clients/oxygen/oxygenclient.h
++++ kwin/clients/oxygen/oxygenclient.h
+@@ -68,6 +68,7 @@
+     bool isMaximized() const;
+     bool colorCacheInvalid_;
+     QColor cachedTitlebarTextColor_;
++    QImage logo;
+ 
+     TileSet *shadowTiles(const QColor& color, const QColor& glow, qreal size, bool active);
+ 

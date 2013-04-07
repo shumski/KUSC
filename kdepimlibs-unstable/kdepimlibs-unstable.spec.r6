@@ -1,0 +1,231 @@
+#
+# spec file for package kdepimlibs4
+#
+# Copyright (c) 2012 SUSE LINUX Products GmbH, Nuernberg, Germany.
+#
+# All modifications and additions to the file contributed by third parties
+# remain the property of their copyright owners, unless otherwise agreed
+# upon. The license for this file, and modifications and additions to the
+# file, is the same license as for the pristine package itself (unless the
+# license for the pristine package is not an Open Source License, in which
+# case the license is the MIT License). An "Open Source License" is a
+# license that conforms to the Open Source Definition (Version 1.9)
+# published by the Open Source Initiative.
+
+
+# Please submit bugfixes or comments via http://bugs.opensuse.org/
+#
+
+
+Name:           kdepimlibs-unstable
+Version:        4.10.40_20130308
+Release:        0
+Summary:        KDE PIM Libraries
+License:        LGPL-2.1+
+Group:          System/GUI/KDE
+Url:            http://www.kde.org
+Source0:        kdepimlibs-git.tar.xz
+Patch0:         4_7_BRANCH.diff
+BuildRequires:  boost-devel
+BuildRequires:  cyrus-sasl-devel
+BuildRequires:  fdupes
+BuildRequires:  gpgme-devel
+BuildRequires:  libakonadiprotocolinternals-unstable-devel >= 1.9.51 akonadi-runtime-unstable
+BuildRequires:  libical-devel
+BuildRequires:  libassuan-devel
+BuildRequires:  libkde-unstable-devel
+BuildRequires:  libprison-devel
+BuildRequires:  libpth-devel
+BuildRequires:  openldap2-devel
+BuildRequires:  libqjson-devel
+BuildRequires:  xz
+BuildRequires:  pkgconfig(libical)
+BuildRequires:  nepomuk-core-unstable-devel
+Requires:       kdelibs-unstable >= %( echo `rpm -q --queryformat '%{VERSION}' libkde-unstable-devel`)
+Recommends:     cyrus-sasl-crammd5
+Recommends:     cyrus-sasl-digestmd5
+Recommends:     cyrus-sasl-plain
+BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+Requires(post):     shared-mime-info
+Requires(postun):   shared-mime-info
+%requires_ge        libical0
+
+%description
+This package contains the basic packages for KDE PIM applications.
+
+%prep
+%setup -q -n kdepimlibs-git
+%patch0 -p1
+
+%build
+  %cmake_kde_unstable -d build
+  %make_jobs
+
+%install
+  cd build
+  %kde_unstable_makeinstall
+
+  # we don't need it
+  %kde_unstable_post_install
+
+%post
+/sbin/ldconfig
+%{_kde_unstable_bindir}/update-mime-database %{_kde_datadir}/mime &> /dev/null || :
+
+%postun
+/sbin/ldconfig
+%{_kde_unstable_bindir}/update-mime-database %{_kde_datadir}/mime &> /dev/null || :
+
+%clean
+  rm -rf %{buildroot}
+
+%package -n libkdepimlibs-unstable
+Summary:        KDE PIM Libraries
+Group:          System/GUI/KDE
+%requires_ge    libical0
+%requires_ge    libqt4-x11
+
+%description -n libkdepimlibs-unstable
+This package contains the basic libraries for KDE PIM applications.
+
+%post -n libkdepimlibs-unstable -p /sbin/ldconfig
+
+%postun -n libkdepimlibs-unstable -p /sbin/ldconfig
+
+%files -n libkdepimlibs-unstable
+%defattr(-,root,root)
+%doc COPYING COPYING.BSD COPYING.LIB
+%{_kde_unstable_libdir}/libgpgme++-pthread.so.*
+%{_kde_unstable_libdir}/libgpgme++.so.*
+%{_kde_unstable_libdir}/libkabc.so.*
+%{_kde_unstable_libdir}/libkabc_file_core.so.*
+%{_kde_unstable_libdir}/libkalarmcal.so.*
+%{_kde_unstable_libdir}/libkblog.so.*
+%{_kde_unstable_libdir}/libkcal.so.*
+%{_kde_unstable_libdir}/libkcalcore.so.*
+%{_kde_unstable_libdir}/libkcalutils.so.*
+%{_kde_unstable_libdir}/libkholidays.so.*
+%{_kde_unstable_libdir}/libkimap.so.*
+%{_kde_unstable_libdir}/libkldap.so.*
+%{_kde_unstable_libdir}/libkmbox.so.*
+%{_kde_unstable_libdir}/libkmime.so.*
+%{_kde_unstable_libdir}/libkontactinterface.so.*
+%{_kde_unstable_libdir}/libkpimidentities.so.*
+%{_kde_unstable_libdir}/libkpimtextedit.so.*
+%{_kde_unstable_libdir}/libkpimutils.so.*
+%{_kde_unstable_libdir}/libkresources.so.*
+%{_kde_unstable_libdir}/libktnef.so.*
+%{_kde_unstable_libdir}/libkxmlrpcclient.so.*
+%{_kde_unstable_libdir}/libmailtransport.so.*
+%{_kde_unstable_libdir}/libmicroblog.so.*
+%{_kde_unstable_libdir}/libqgpgme.so.*
+%{_kde_unstable_libdir}/libsyndication.so.*
+
+%package -n libakonadi-unstable
+Summary:        PIM Storage Service Client Libraries
+Group:          System/GUI/KDE
+Requires:       libakonadiprotocolinternals1-unstable >= 1.6.0
+Requires:       libkdepimlibs-unstable = %{version}
+%requires_ge    libqt4-x11
+
+%description -n libakonadi-unstable
+This package contains the libraries of Akonadi, the KDE PIM storage
+service.
+
+%post -n libakonadi-unstable -p /sbin/ldconfig
+
+%postun -n libakonadi-unstable -p /sbin/ldconfig
+
+%files -n libakonadi-unstable
+%defattr(-,root,root)
+%doc COPYING COPYING.LIB
+%{_kde_unstable_libdir}/libakonadi-calendar.so.*
+%{_kde_unstable_libdir}/libakonadi-contact.so.*
+%{_kde_unstable_libdir}/libakonadi-kabc.so.*
+%{_kde_unstable_libdir}/libakonadi-kcal.so.*
+%{_kde_unstable_libdir}/libakonadi-kde.so.*
+%{_kde_unstable_libdir}/libakonadi-kmime.so.*
+%{_kde_unstable_libdir}/libakonadi-notes.so.*
+%{_kde_unstable_libdir}/libakonadi-socialutils.so.*
+
+%package -n libkdepimlibs-unstable-devel
+Summary:        KDE PIM Libraries: Build Environment
+Group:          Development/Libraries/KDE
+Requires:       boost-devel
+Requires:       kdepimlibs-unstable = %{version}
+Requires:       libakonadi-unstable = %{version}
+Requires:       libakonadiprotocolinternals-unstable-devel
+Requires:       libkde-unstable-devel
+Requires:       libkdepimlibs-unstable = %{version}
+Requires:       libprison-devel
+Requires:       openldap2-devel
+Requires:       pkgconfig(libical)
+Requires:       nepomuk-core-unstable-devel
+
+%description -n libkdepimlibs-unstable-devel
+This package contains all necessary include files and libraries needed
+to develop KDE PIM applications.
+
+%files -n libkdepimlibs-unstable-devel
+%defattr(-,root,root)
+%doc COPYING COPYING.BSD COPYING.LIB
+%{_kde_unstable_appsdir}/cmake
+%{_kde_unstable_includedir}/*
+%dir %{_kde_unstable_libdir}/cmake
+%{_kde_unstable_libdir}/cmake/KdepimLibs
+%dir %{_kde_unstable_libdir}/gpgmepp
+%{_kde_unstable_libdir}/gpgmepp/GpgmeppConfig.cmake
+%{_kde_unstable_libdir}/gpgmepp/GpgmeppLibraryDepends.cmake
+%{_kde_unstable_libdir}/libakonadi-calendar.so
+%{_kde_unstable_libdir}/libakonadi-contact.so
+%{_kde_unstable_libdir}/libakonadi-kabc.so
+%{_kde_unstable_libdir}/libakonadi-kcal.so
+%{_kde_unstable_libdir}/libakonadi-kde.so
+%{_kde_unstable_libdir}/libakonadi-kmime.so
+%{_kde_unstable_libdir}/libakonadi-notes.so
+%{_kde_unstable_libdir}/libakonadi-socialutils.so
+%{_kde_unstable_libdir}/libgpgme++-pthread.so
+%{_kde_unstable_libdir}/libgpgme++.so
+%{_kde_unstable_libdir}/libkabc.so
+%{_kde_unstable_libdir}/libkabc_file_core.so
+%{_kde_unstable_libdir}/libkalarmcal.so
+%{_kde_unstable_libdir}/libkblog.so
+%{_kde_unstable_libdir}/libkcal.so
+%{_kde_unstable_libdir}/libkcalcore.so
+%{_kde_unstable_libdir}/libkcalutils.so
+%{_kde_unstable_libdir}/libkholidays.so
+%{_kde_unstable_libdir}/libkimap.so
+%{_kde_unstable_libdir}/libkldap.so
+%{_kde_unstable_libdir}/libkmbox.so
+%{_kde_unstable_libdir}/libkmime.so
+%{_kde_unstable_libdir}/libkontactinterface.so
+%{_kde_unstable_libdir}/libkpimidentities.so
+%{_kde_unstable_libdir}/libkpimtextedit.so
+%{_kde_unstable_libdir}/libkpimutils.so
+%{_kde_unstable_libdir}/libkresources.so
+%{_kde_unstable_libdir}/libktnef.so
+%{_kde_unstable_libdir}/libkxmlrpcclient.so
+%{_kde_unstable_libdir}/libmailtransport.so
+%{_kde_unstable_libdir}/libmicroblog.so
+%{_kde_unstable_libdir}/libqgpgme.so
+%{_kde_unstable_libdir}/libsyndication.so
+
+%files
+%defattr(-,root,root)
+%doc COPYING COPYING.BSD COPYING.LIB
+%exclude %{_kde_unstable_appsdir}/cmake
+%doc %lang(en) %{_kde_unstable_htmldir}/en/kcontrol
+%doc %lang(en) %{_kde_unstable_htmldir}/en/kioslave
+%{_kde_unstable_modulesdir}
+%{_kde_unstable_appsdir}
+%{_kde_unstable_configkcfgdir}/mailtransport.kcfg
+%{_kde_unstable_configkcfgdir}/recentcontactscollections.kcfg
+%{_kde_unstable_configkcfgdir}/resourcebase.kcfg
+%{_kde_unstable_configkcfgdir}/specialmailcollections.kcfg
+%{_kde_unstable_servicesdir}
+%{_kde_unstable_servicetypesdir}
+%{_kde_unstable_datadir}/dbus-1/
+%{_kde_unstable_datadir}/mime/packages/kdepimlibs-mime.xml
+%{_kde_unstable_datadir}/mime/packages/x-vnd.akonadi.socialfeeditem.xml
+
+%changelog

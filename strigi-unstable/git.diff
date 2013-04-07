@@ -1,0 +1,570 @@
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/lib/endanalyzers/flacendanalyzer.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/lib/endanalyzers/flacendanalyzer.cpp
+--- a/libstreamanalyzer/lib/endanalyzers/flacendanalyzer.cpp	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/lib/endanalyzers/flacendanalyzer.cpp	2012-07-16 19:20:07.045555654 +0200
+@@ -30,6 +30,7 @@
+ #include <iostream>
+ #include <cctype>
+ #include <cstring>
++#include <list>
+ using namespace Strigi;
+ using namespace std;
+ 
+@@ -52,6 +53,8 @@
+ 	NMM_DRAFT "musicBrainzAlbumID"),
+     discNumberPropertyName(
+ 	NMM_DRAFT "setNumber"),
++    albumTrackCountName(
++        NMM_DRAFT "albumTrackCount"),
+ 
+     musicClassName(
+ 	NMM_DRAFT "MusicPiece"),
+@@ -122,6 +125,16 @@
+   indexable.addTriplet(subject, predicate, object);
+ }
+ 
++string
++removeAlphabets(const string& str) {
++    std::string newStr;
++    newStr.reserve(str.length());
++    for( int i=0; i<str.length(); i++ )
++        if( !isalpha(str[i]) )
++            newStr.push_back( str[i] );
++    return newStr;
++}
++
+ signed char
+ FlacEndAnalyzer::analyze(Strigi::AnalysisResult& indexable, Strigi::InputStream* in) {
+     if(!in)
+@@ -200,7 +213,7 @@
+         // in Vorbis comments the "artist" field is used for the performer in modern music
+         // but for the composer in calssical music. Thus, we cache both and make the decision
+         // at the end
+-        string artist, performer;
++	list<string> artists, performers;
+ 
+ 	// read all the comments
+ 	p2 += 4;
+@@ -223,12 +236,24 @@
+ 		    // check if we can handle this field and if so handle it
+ 		    map<string, const RegisteredField*>::const_iterator iter
+ 			= factory->fields.find(name);
+-		    const string value(p2+eq+1, size-eq-1);
++		    string value(p2+eq+1, size-eq-1);
+ 		    
+ 		    if (iter != factory->fields.end()) {
+-			indexable.addValue(iter->second, value);
++                // Hack: the tracknumber sometimes contains the track count, too
++                int pos = 0;
++                if(name=="tracknumber" && (pos = value.find_first_of('/')) > 0 ) {
++                    // the track number
++                    indexable.addValue(iter->second, value.substr(0, pos));
++                    // the track count
++                    addStatement(indexable, albumUri, albumTrackCountName, value.substr(pos+1));
++                }
++                else {
++                    if(name == "replaygain_track_gain")
++                        value = removeAlphabets(value);
++                    indexable.addValue(iter->second, value);
++                }
+ 		    } else if(name=="artist") {
+-                        artist = value;
++                        artists.push_back(value);
+ 		    } else if(name=="lyrics") {
+                         indexable.addText(value.c_str(),
+                                           (int32_t)value.length());
+@@ -241,12 +266,13 @@
+ 			addStatement(indexable, albumUri, titlePropertyName, value);
+ 		    } else if(name=="mbalbumid") {
+ 			addStatement(indexable, albumUri, musicBrainzAlbumIDPropertyName, value);
+-		    } else if(name=="trackcount") {
++		    } else if(name=="trackcount" || name=="tracktotal") {
+ 			addStatement(indexable, albumUri, albumTrackCountPropertyName, value);
+ 		    } else if(name=="replaygain_album_gain") {
+-			addStatement(indexable, albumUri, albumGainPropertyName, value);
++			// the gain is often in the form "number dB", the appending "dB" must be removed
++			addStatement(indexable, albumUri, albumGainPropertyName, removeAlphabets(value));
+ 		    } else if(name=="replaygain_album_peak") {
+-			addStatement(indexable, albumUri, albumPeakGainPropertyName, value);
++			addStatement(indexable, albumUri, albumPeakGainPropertyName, removeAlphabets(value));
+ 		    } else if(name=="composer") {
+ 			const string composerUri( indexable.newAnonymousUri() );
+ 
+@@ -260,8 +286,8 @@
+ 			indexable.addTriplet(publisherUri, typePropertyName, contactClassName);
+ 			indexable.addTriplet(publisherUri, fullnamePropertyName, value);
+ 		    } else if(name=="performer") {
+-                        performer = value;
+-		    }
++                        performers.push_back(value);
++                    }
+ 		}
+ 	    } else {
+ 		m_error = "problem with tag size";
+@@ -273,8 +299,8 @@
+         // we now decide how to store the artist and performer as suggested by the Vorbis comments spec
+         const Strigi::RegisteredField* artistField = 0;
+         const Strigi::RegisteredField* performerField = 0;
+-        if (!artist.empty()) {
+-            if (!performer.empty()) {
++        if (!artists.empty()) {
++            if (!performers.empty()) {
+                 artistField = factory->composerField;
+                 performerField = factory->performerField;
+             }
+@@ -282,22 +308,30 @@
+                 artistField = factory->performerField;
+             }
+         }
+-        else if (!performer.empty()) {
++        else if (!performers.empty()) {
+             performerField = factory->performerField;
+         }
+         if (artistField) {
+-            const string artistUri( indexable.newAnonymousUri() );
++	    list<string>::iterator aIt;
++
++            for(aIt=artists.begin(); aIt != artists.end(); ++aIt) {
++                const string artistUri( indexable.newAnonymousUri() );
+ 
+-            indexable.addValue(artistField, artistUri);
+-            indexable.addTriplet(artistUri, typePropertyName, contactClassName);
+-            indexable.addTriplet(artistUri, fullnamePropertyName, artist);
++                indexable.addValue(artistField, artistUri);
++                indexable.addTriplet(artistUri, typePropertyName, contactClassName);
++                indexable.addTriplet(artistUri, fullnamePropertyName, *aIt);
++            }
+         }
+         if (performerField) {
+-            const string performerUri( indexable.newAnonymousUri() );
++            list<string>::iterator pIt;
++
++            for(pIt=performers.begin(); pIt != performers.end(); ++pIt) {
++                const string performerUri( indexable.newAnonymousUri() );
+ 
+-            indexable.addValue(performerField, performerUri);
+-            indexable.addTriplet(performerUri, typePropertyName, contactClassName);
+-            indexable.addTriplet(performerUri, fullnamePropertyName, performer);
++                indexable.addValue(performerField, performerUri);
++                indexable.addTriplet(performerUri, typePropertyName, contactClassName);
++                indexable.addTriplet(performerUri, fullnamePropertyName, *pIt);
++            }
+         }
+ 
+ 	if(!albumUri.empty()) {
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/lib/endanalyzers/id3endanalyzer.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/lib/endanalyzers/id3endanalyzer.cpp
+--- a/libstreamanalyzer/lib/endanalyzers/id3endanalyzer.cpp	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/lib/endanalyzers/id3endanalyzer.cpp	2012-07-16 19:20:07.045555655 +0200
+@@ -51,6 +51,8 @@
+ 	NCO "fullname"),
+     titlePropertyName(
+ 	NIE "title"),
++    albumArtistPropertyName(
++	NMM_DRAFT "albumArtist"),
+     albumTrackCountPropertyName(
+ 	NMM_DRAFT "albumTrackCount"),
+     discNumberPropertyName(
+@@ -81,7 +83,9 @@
+ VBR detection
+ */
+ 
+-static const string genres[148] = {
++#define ID3_NUMBER_OF_GENRES 148
++
++static const string genres[ID3_NUMBER_OF_GENRES] = {
+   "Blues",
+   "Classic Rock",
+   "Country",
+@@ -372,6 +376,54 @@
+     return !s.empty();
+ }
+ 
++/**
++ * Functional helper class to get the right numbers out of a 'genre' string which
++ * might be a number in a index
++ */
++class genre_number_parser {
++  private:
++    bool success;
++    long result;
++    void parse_string( string genre ) {
++        char* endptr;
++        int r = strtol(genre.c_str(),&endptr, 10);
++        if(*endptr == '\0') { //to check if the convertion went more or less ok
++	    if(r >=0 && r < ID3_NUMBER_OF_GENRES ) { //to ensure it is within the range we have
++	        success=true;
++	        result=r;
++	    }
++        }
++    }
++  public:
++    /**
++     * constructor taking the genre string you want parsed as a number
++     */
++    genre_number_parser(string genre) : success(false), result(-1) {
++        if(genre.size()==0) {
++	  //if the string is empty, there is no need to try to parse it
++	    return;
++        }
++        //the string might start and end with parenthesis
++        if(genre[0]=='(' && genre[genre.size()-1]==')') {
++	    parse_string(genre.substr(1,genre.length()-2));
++	    return;
++        }
++        parse_string(genre);
++    }
++    /**
++     * wether or not parsing was successful
++     */
++    operator bool() {
++        return success;
++    }
++    /**
++     * the actual result of the parsing, or -1 if parsing wasn't successful
++     */
++    operator long() {
++        return result;
++    }
++};
++
+ signed char
+ ID3EndAnalyzer::analyze(Strigi::AnalysisResult& indexable, Strigi::InputStream* in) {
+   const int max_padding = 1000;
+@@ -491,7 +543,6 @@
+ 		    indexable.addValue(factory->createdField, value);
+ 		    found_year = true;
+ 		} else if ((strncmp("TPE1", p, 4) == 0) ||
+-			    (strncmp("TPE2", p, 4) == 0) ||
+ 			    (strncmp("TPE3", p, 4) == 0) ||
+ 			    (strncmp("TPE4", p, 4) == 0)) {
+ 		    string performerUri = indexable.newAnonymousUri();
+@@ -500,6 +551,12 @@
+ 		    indexable.addTriplet(performerUri, typePropertyName, contactClassName);
+ 		    indexable.addTriplet(performerUri, fullnamePropertyName, value);
+ 		    found_artist = true;
++		} else if (strncmp("TPE2", p, 4) == 0) {
++		    const string albumArtistUri( indexable.newAnonymousUri() );
++
++		    addStatement(indexable, albumUri, albumArtistPropertyName, albumArtistUri);
++		    indexable.addTriplet(albumArtistUri, typePropertyName, contactClassName);
++		    indexable.addTriplet(albumArtistUri, fullnamePropertyName, value);
+ 		} else if ((strncmp("TPUB", p, 4) == 0) ||
+ 			    (strncmp("TENC", p, 4) == 0)) {
+ 		    string publisherUri = indexable.newAnonymousUri();
+@@ -512,13 +569,17 @@
+ 		    addStatement(indexable, albumUri, titlePropertyName, value);
+ 		    found_album = true;
+ 		} else if (strncmp("TCON", p, 4) == 0) {
+-            // The Genre is stored as (number)
+-            if( value[0] == '(' && value[value.length()-1] == ')' ) {
+-                //vHanda: Maybe one should check if all the characters in between are digits
+-                int genreIndex = atoi( value.substr( 1, value.length()-1 ).c_str() );
+-                indexable.addValue(factory->genreField, genres[ genreIndex ]);
+-                found_genre = true;
+-            }
++		    genre_number_parser p(value);
++		    if(p) {
++			indexable.addValue(factory->genreField, genres[ p ]);
++			found_genre = true;
++		    } else {
++			// We must not forget that genre could be a string.
++			if (!value.empty()) {
++			    indexable.addValue(factory->genreField, value);
++			    found_genre = true;
++			}
++		    }
+ 		} else if (strncmp("TLEN", p, 4) == 0) {
+ 		    indexable.addValue(factory->durationField, value);
+ 		} else if (strncmp("TEXT", p, 4) == 0) {
+@@ -623,7 +684,7 @@
+ 	    if (!found_track && !buf[125] && buf[126]) {
+ 		indexable.addValue(factory->trackNumberField, (int)(buf[126]));
+ 	    }
+-	    if (!found_genre && (unsigned char)(buf[127]) < 148)
++	    if (!found_genre && (unsigned char)(buf[127]) < ID3_NUMBER_OF_GENRES)
+ 		indexable.addValue(factory->genreField, genres[(uint8_t)buf[127]]);
+ 	}
+     }
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.cpp
+--- a/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.cpp	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.cpp	2012-07-16 19:20:07.045555655 +0200
+@@ -26,13 +26,16 @@
+ #include <string>
+ #include <cstring>
+ 
++#include <unistd.h>
++#include <stdlib.h>
++
+ // AnalyzerFactory
+ void M3uLineAnalyzerFactory::registerFields(Strigi::FieldRegister& reg) 
+ {
+ // track list length is easily obtained via API
+ //    tracksField = reg.registerField();
+     trackPathField = reg.registerField(
+-        "http://www.semanticdesktop.org/ontologies/2007/01/19/nie#hasLogicalPart");
++        "http://www.semanticdesktop.org/ontologies/2007/01/19/nie#links");
+     m3uTypeField = reg.registerField(
+         "http://freedesktop.org/standards/xesam/1.0/core#formatSubtype");
+     typeField = reg.typeField;
+@@ -43,7 +46,7 @@
+ }
+ 
+ // Analyzer
+-void M3uLineAnalyzer::startAnalysis(Strigi::AnalysisResult* i) 
++void M3uLineAnalyzer::startAnalysis(Strigi::AnalysisResult* i)
+ {
+     extensionOk = i->extension() == "m3u" || i->extension() == "M3U";
+ 
+@@ -52,7 +55,24 @@
+     count = 0;
+ }
+ 
+-void M3uLineAnalyzer::handleLine(const char* data, uint32_t length) 
++std::string M3uLineAnalyzer::constructAbsolutePath(const std::string &relative) const
++{
++    if(char* buf = realpath(analysisResult->path().c_str(), 0)) {
++#ifdef _WIN32
++        static const char s_pathSeparator = '\\';
++#else
++        static const char s_pathSeparator = '/';
++#endif
++        std::string path(buf);
++        free(buf);
++        return path.substr(0, path.rfind(s_pathSeparator)+1) + relative;
++    }
++    else {
++        return std::string();
++    }
++}
++
++void M3uLineAnalyzer::handleLine(const char* data, uint32_t length)
+ {
+     if (!extensionOk) 
+         return;
+@@ -68,8 +88,11 @@
+         //if (line == 1)
+         //    analysisResult->addValue(factory->m3uTypeField, "simple");
+ 
+-        // TODO: Check for a valid url with QUrl
+-        analysisResult->addValue(factory->trackPathField, std::string(data, length));
++        // we create absolute paths and drop links to non-existing files
++        const std::string path = constructAbsolutePath(std::string(data, length));
++        if(!access(path.c_str(), F_OK)) {
++            analysisResult->addValue(factory->trackPathField, path);
++        }
+ 
+         ++count;
+     } else if (line == 1 && strncmp(data, "#EXTM3U", 7) == 0) {      
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.h /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.h
+--- a/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.h	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/lib/lineanalyzers/m3ustreamanalyzer.h	2012-07-16 19:20:07.045555655 +0200
+@@ -26,6 +26,8 @@
+ #include <strigi/analyzerplugin.h>
+ #include <strigi/streamlineanalyzer.h>
+ 
++#include <string>
++
+ class M3uLineAnalyzerFactory;
+ 
+ class M3uLineAnalyzer : public Strigi::StreamLineAnalyzer 
+@@ -37,6 +39,8 @@
+     bool extensionOk;
+     int32_t count;
+ 
++    std::string constructAbsolutePath(const std::string& relative) const;
++
+ public:
+     M3uLineAnalyzer(const M3uLineAnalyzerFactory* f) : factory(f) {}
+     ~M3uLineAnalyzer() {}
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/lib/throughanalyzers/oggthroughanalyzer.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/lib/throughanalyzers/oggthroughanalyzer.cpp
+--- a/libstreamanalyzer/lib/throughanalyzers/oggthroughanalyzer.cpp	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/lib/throughanalyzers/oggthroughanalyzer.cpp	2012-07-16 19:20:07.047555630 +0200
+@@ -37,6 +37,8 @@
+ 	"http://www.semanticdesktop.org/ontologies/2007/03/22/nco#fullname"),
+     titlePropertyName(
+ 	"http://www.semanticdesktop.org/ontologies/2007/01/19/nie#title"),
++    albumTrackCountName(
++        NMM_DRAFT "albumTrackCount"),
+ 
+     musicClassName(
+ 	NMM_DRAFT "MusicPiece"),
+@@ -68,6 +70,14 @@
+     fields["type"] = r.typeField;
+ }
+ 
++inline
++void
++addStatement(AnalysisResult* indexable, string& subject, const string& predicate, const string& object) {
++  if (subject.empty())
++    subject = indexable->newAnonymousUri();
++  indexable->addTriplet(subject, predicate, object);
++}
++
+ void
+ OggThroughAnalyzer::setIndexable(AnalysisResult* i) {
+     indexable = i;
+@@ -129,6 +139,7 @@
+     // but for the composer in calssical music. Thus, we cache both and make the decision
+     // at the end
+     string artist, performer;
++    string albumUri;
+ 
+     // read all the comments
+     p2 += 4;
+@@ -151,15 +162,21 @@
+                     = factory->fields.find(name);
+                 string value(p2+eq+1, size-eq-1);
+                 if (iter != factory->fields.end()) {
+-                    indexable->addValue(iter->second, value);
++                    // Hack: the tracknumber sometimes contains the track count, too
++                    int pos = 0;
++                    if(name=="tracknumber" && (pos = value.find_first_of('/')) > 0 ) {
++                        // the track number
++                        indexable->addValue(iter->second, value.substr(0, pos));
++                        // the track count
++                        addStatement(indexable, albumUri, albumTrackCountName, value.substr(pos+1));
++                    }
++                    else {
++                        indexable->addValue(iter->second, value);
++                    }
+                 } else if(name=="artist") {
+                     artist = value;
+                 } else if(name=="album") {
+-		    string albumUri = indexable->newAnonymousUri();
+-		    
+-		    indexable->addValue(factory->albumField, albumUri);
+-		    indexable->addTriplet(albumUri, typePropertyName, albumClassName);
+-		    indexable->addTriplet(albumUri, titlePropertyName, value);
++                    addStatement(indexable, albumUri, titlePropertyName, value);
+ 		} else if(name=="composer") {
+ 		    string composerUri = indexable->newAnonymousUri();
+ 
+@@ -206,6 +223,10 @@
+         indexable->addTriplet(performerUri, typePropertyName, contactClassName);
+         indexable->addTriplet(performerUri, fullnamePropertyName, performer);
+     }
++    if(!albumUri.empty()) {
++      indexable->addValue(factory->albumField, albumUri);
++      indexable->addTriplet(albumUri, typePropertyName, albumClassName);
++    }
+ 
+     // set the "codec" value
+     indexable->addValue(factory->fields.find("codec")->second, "Ogg/Vorbis");
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/plugins/lineplugins/xpmlineanalyzer.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/plugins/lineplugins/xpmlineanalyzer.cpp
+--- a/libstreamanalyzer/plugins/lineplugins/xpmlineanalyzer.cpp	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/plugins/lineplugins/xpmlineanalyzer.cpp	2012-07-16 19:20:07.057555504 +0200
+@@ -65,7 +65,7 @@
+     uint32_t i = 0;
+     // we have found the line which should contain the information we want
+     ready = true;
+-    // read the height
++    // read the width
+     uint32_t propertyValue = 0;
+     i++;
+     while (i < length && isdigit(data[i])) {
+@@ -76,9 +76,9 @@
+     if (i >= length || data[i] != ' ')
+         return;
+ 
+-    analysisResult->addValue(factory->heightField, propertyValue);
++    analysisResult->addValue(factory->widthField, propertyValue);
+ 
+-    // read the width
++    // read the height
+     propertyValue = 0;
+     i++;
+     while (i < length && isdigit(data[i])) {
+@@ -89,7 +89,7 @@
+     if (i >= length || data[i] != ' ')
+         return;
+ 
+-    analysisResult->addValue(factory->widthField, propertyValue);
++    analysisResult->addValue(factory->heightField, propertyValue);
+ 
+     // read the number of colors
+     propertyValue = 0;
+@@ -103,7 +103,7 @@
+         return;
+ 
+     analysisResult->addValue(factory->numberOfColorsField, propertyValue);
+-    analysisResult->addValue(factory->typeField, "http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#Image");
++    analysisResult->addValue(factory->typeField, "http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#RasterImage");
+ }
+ bool
+ XpmLineAnalyzer::isReadyWithStream() {
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/libstreamanalyzer/plugins/throughplugins/xbmthroughanalyzer.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/libstreamanalyzer/plugins/throughplugins/xbmthroughanalyzer.cpp
+--- a/libstreamanalyzer/plugins/throughplugins/xbmthroughanalyzer.cpp	2011-12-07 21:28:33.000000000 +0100
++++ b/libstreamanalyzer/plugins/throughplugins/xbmthroughanalyzer.cpp	2012-07-16 19:20:07.057555504 +0200
+@@ -145,7 +145,7 @@
+         }
+     }
+ 
+-    analysisResult->addValue(factory->typeField, "http://www.semanticdesktop.org/ontologies/nfo#Cursor");
++    analysisResult->addValue(factory->typeField, "http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#Cursor");
+ 
+     return in;
+ }
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/strigidaemon/bin/daemon/dbus/dbustest.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/strigidaemon/bin/daemon/dbus/dbustest.cpp
+--- a/strigidaemon/bin/daemon/dbus/dbustest.cpp	2011-07-15 03:29:31.000000000 +0200
++++ b/strigidaemon/bin/daemon/dbus/dbustest.cpp	2012-07-16 19:22:13.227978158 +0200
+@@ -67,7 +67,7 @@
+     }
+     if (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret) {
+         fprintf(stderr, "Not Primary Owner (%d)\n", ret);
+-        return false;
++        return 0;
+     }
+ 
+     for (int i=0; i<10; ++i) {
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/strigidaemon/bin/daemon/eventlistener/eventlistenerqueue.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/strigidaemon/bin/daemon/eventlistener/eventlistenerqueue.cpp
+--- a/strigidaemon/bin/daemon/eventlistener/eventlistenerqueue.cpp	2011-07-15 03:29:31.000000000 +0200
++++ b/strigidaemon/bin/daemon/eventlistener/eventlistenerqueue.cpp	2012-07-16 19:22:13.237978032 +0200
+@@ -27,9 +27,7 @@
+ #include <iostream>
+ #include <stdio.h>
+ 
+-#if defined(__SUNPRO_CC)
+ #include <unistd.h>
+-#endif
+ 
+ using namespace std;
+ 
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/strigidaemon/bin/daemon/socketserver.cpp /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/strigidaemon/bin/daemon/socketserver.cpp
+--- a/strigidaemon/bin/daemon/socketserver.cpp	2011-07-15 03:29:31.000000000 +0200
++++ b/strigidaemon/bin/daemon/socketserver.cpp	2012-07-16 19:22:13.237978032 +0200
+@@ -54,7 +54,7 @@
+     sd = socket(AF_UNIX, SOCK_STREAM, 0);
+     if(sd < 0) {
+         perror("cannot open socket ");
+-        return false;
++        return 0;
+     }
+ 
+     /* set the address */
+@@ -67,12 +67,12 @@
+     sock.sun_family = AF_UNIX;
+     if (bind(sd, (struct sockaddr *)&sock, sizeof(sock))<0) {
+         perror("cannot bind port ");
+-        return false;
++        return 0;
+     }
+ 
+     if (::listen(sd, 5) < 0) {
+         perror("cannot listen to port");
+-        return false;
++        return 0;
+     }
+ 
+     while (interface->isActive()) {
+diff -ruN /home/hrvoje/Src/home:sumski:KDE:Distro:Factory/strigi/strigi-0.7.7/strigidaemon/cmake/FindCppUnit.cmake /home/hrvoje/Src/home:sumski:KDE:Unstable:SC/strigi/strigi-0.7.7git/strigidaemon/cmake/FindCppUnit.cmake
+--- a/strigidaemon/cmake/FindCppUnit.cmake	2011-07-15 03:29:31.000000000 +0200
++++ b/strigidaemon/cmake/FindCppUnit.cmake	2012-07-16 19:22:13.239978007 +0200
+@@ -33,7 +33,7 @@
+         FIND_PATH(CPPUNIT_CFLAGS cppunit/TestRunner.h PATHS /usr/include /usr/local/include )
+         FIND_LIBRARY(CPPUNIT_LIBRARIES NAMES cppunit PATHS /usr/lib /usr/local/lib )
+         # how can we find cppunit version?
+-        MESSAGE (STATUS "Ensure you cppunit installed version is at least ${CPPUNIT_MIN_VERSION}")
++        MESSAGE (STATUS "Ensure your cppunit installed version is at least ${CPPUNIT_MIN_VERSION}")
+         SET (CPPUNIT_INSTALLED_VERSION ${CPPUNIT_MIN_VERSION})
+     ENDIF(CPPUNIT_CONFIG_EXECUTABLE)
+ 
+ 

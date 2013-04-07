@@ -1,0 +1,11 @@
+Index: khelpcenter/khelpcenter.desktop
+===================================================================
+--- khelpcenter/khelpcenter.desktop.orig
++++ khelpcenter/khelpcenter.desktop
+@@ -185,5 +185,5 @@ Icon=help-browser
+ X-DocPath=khelpcenter/index.html
+ Type=Service
+ Terminal=false
+-Exec=khelpcenter %u
++Exec=susehelp %u
+ X-KDE-StartupNotify=true

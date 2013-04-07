@@ -1,0 +1,70 @@
+Index: kdecore/services/kservice.cpp
+===================================================================
+--- kdecore/services/kservice.cpp.orig
++++ kdecore/services/kservice.cpp
+@@ -64,6 +64,8 @@ void KServicePrivate::init( const KDeskt
+ {
+     const QString entryPath = q->entryPath();
+     bool absPath = !QDir::isRelativePath(entryPath);
++    bool kde3application = config->fileName().startsWith(QLatin1String("/opt/kde3/share/applications/kde/"))
++        || config->fileName().startsWith(QLatin1String("/opt/kde3/share/autostart/"));
+ 
+     // TODO: it makes sense to have a KConstConfigGroup I guess
+     const KConfigGroup desktopGroup = const_cast<KDesktopFile*>(config)->desktopGroup();
+@@ -91,6 +93,8 @@ void KServicePrivate::init( const KDeskt
+         if (i != -1)
+             m_strName = m_strName.left(i);
+     }
++    if (kde3application)
++        m_strName += QLatin1String("/KDE3");
+ 
+     m_strType = config->readType();
+     entryMap.remove(QLatin1String("Type"));
+@@ -113,6 +117,18 @@ void KServicePrivate::init( const KDeskt
+     // NOT readPathEntry, it is not XDG-compliant. Path entries written by
+     // KDE4 will be still treated as such, though.
+     m_strExec = desktopGroup.readEntry( "Exec", QString() );
++    if (kde3application && !m_strExec.startsWith(QLatin1String("/")))
++      m_strExec = QLatin1String("/opt/kde3/bin/")+m_strExec;
++    else if (desktopGroup.readEntry(QLatin1String("X-KDE-SubstituteUID")), false) {
++      int space = m_strExec.indexOf(QLatin1String(" "));
++      if (space==-1)
++        m_strExec = KStandardDirs::findExe(m_strExec);
++      else {
++        const QString command = m_strExec.left(space);
++        m_strExec.replace(command,KStandardDirs::findExe(command));
++      }
++    }
++
+     entryMap.remove(QLatin1String("Exec"));
+ 
+     if (m_strType == QLatin1String("Application")) {
+@@ -215,6 +231,8 @@ void KServicePrivate::init( const KDeskt
+ 
+     m_initialPreference = desktopGroup.readEntry( "InitialPreference", 1 );
+     entryMap.remove(QLatin1String("InitialPreference"));
++    if (kde3application)
++        m_initialPreference = 1;
+ 
+     // Assign the "initial preference" to each mimetype/servicetype
+     // (and to set such preferences in memory from kbuildsycoca)
+@@ -256,6 +274,8 @@ void KServicePrivate::init( const KDeskt
+         m_DBUSStartusType = KService::DBusNone;
+ 
+     m_strDesktopEntryName = _name.toLower();
++    if (kde3application)
++        m_strDesktopEntryName = QLatin1String("kde-") + m_strDesktopEntryName;
+ 
+     m_bAllowAsDefault = desktopGroup.readEntry("AllowDefault", true);
+     entryMap.remove(QLatin1String("AllowDefault"));
+@@ -275,7 +295,9 @@ void KServicePrivate::init( const KDeskt
+ //  qDebug("Path = %s", entryPath.toLatin1().constData());
+     QMap<QString,QString>::ConstIterator it = entryMap.constBegin();
+     for( ; it != entryMap.constEnd();++it) {
+-        const QString key = it.key();
++        QString key = it.key();
++        if (kde3application && key==QLatin1String("OnlyShowIn") && QVariant(*it)==QLatin1String("KDE;"))
++            key = QLatin1String("NotShowIn");
+         // do not store other translations like Name[fr]; kbuildsycoca will rerun if we change languages anyway
+         if (!key.contains(QLatin1Char('['))) {
+             //kDebug(servicesDebugArea()) << "  Key =" << key << " Data =" << *it;

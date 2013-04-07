@@ -1,0 +1,21 @@
+Subject: Add Yast and Install Software to Lancelot menu
+From: Beineri
+Bug: bnc#532377
+Patch-upstream: never
+
+Index: applets/lancelot/app/src/models/SystemServices.cpp
+===================================================================
+--- libs/lancelot-datamodels/SystemServices.cpp	(revision 1023978)
++++ libs/lancelot-datamodels/SystemServices.cpp	(working copy)
+@@ -35,8 +35,9 @@
+         QStringList applications;
+         applications
+             << "systemsettings"
+-            << "ksysguard"
+-            << "kinfocenter";
++            << "YaST"
++            << "package-manager"
++            << "live-installer";
+ 
+         int index = 0;
+ 

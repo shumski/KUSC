@@ -1,0 +1,12 @@
+--- nepomuk/controller/nepomukcontroller.desktop
++++ nepomuk/controller/nepomukcontroller.desktop
+@@ -51,7 +51,8 @@
+ Icon=nepomuk
+ Exec=nepomukcontroller
+ Type=Application
+-Categories=Qt;KDE;System;
++OnlyShowIn=KDE
++Categories=Qt;KDE;System;Archiving
+ X-KDE-autostart-after=panel
+ X-DBUS-StartupType=Unique
+ X-KDE-StartupNotify=false

@@ -1,0 +1,7 @@
+--- a/BRANCH_STATUS
++++ b/BRANCH_STATUS
+@@ -0,0 +1,2 @@
++current HEAD: 8d73471030d3c7f62d891f52057154e673fd5690
++git diff v4.7.2..origin/KDE/4.7
+diff --git a/applets/fileWatcher/plasma-fileWatcher-default.desktop b/applets/fileWatcher/plasma-fileWatcher-default.desktop
+index 00b70e9..d519745 100644

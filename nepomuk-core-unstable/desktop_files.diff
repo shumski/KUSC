@@ -1,0 +1,21 @@
+diff -ruN nepomuk-core-4.10.40_20130111.orig/cleaner/nepomukcleaner.desktop nepomuk-core-4.10.40_20130111/cleaner/nepomukcleaner.desktop
+--- nepomuk-core-4.10.40_20130111.orig/cleaner/nepomukcleaner.desktop	2013-01-11 15:28:30.560079501 +0100
++++ nepomuk-core-4.10.40_20130111/cleaner/nepomukcleaner.desktop	2013-01-16 22:08:24.980526414 +0100
+@@ -33,6 +33,5 @@
+ Name[zh_CN]=Nepomuk 清理工具
+ Name[zh_TW]=Nepomuk 清除器
+ Exec=nepomukcleaner
+-Icon=nepomuk
+ Type=Application
+-Categories=Qt;KDE;System;Utility;
++Categories=Qt;KDE;System;Utility;Archiving;
+diff -ruN nepomuk-core-4.10.40_20130111.orig/services/storage/backup/gui/nepomukbackup.desktop nepomuk-core-4.10.40_20130111/services/storage/backup/gui/nepomukbackup.desktop
+--- nepomuk-core-4.10.40_20130111.orig/services/storage/backup/gui/nepomukbackup.desktop	2013-01-11 15:28:31.105079528 +0100
++++ nepomuk-core-4.10.40_20130111/services/storage/backup/gui/nepomukbackup.desktop	2013-01-16 22:00:53.294173271 +0100
+@@ -45,6 +45,5 @@
+ Name[zh_CN]=Nepomuk 备份
+ Name[zh_TW]=Nepomuk 備份
+ Exec=nepomukbackup
+-Icon=nepomuk
+ Type=Application
+ Categories=Qt;KDE;System;Utility;Archiving;

@@ -1,0 +1,10 @@
+--- orig.kdebase4-openSUSE/config-files/etc/kde4/share/config/nepomukserverrc	2013-02-18 21:47:40.936818740 +0100
++++ kdebase4-openSUSE/config-files/etc/kde4/share/config/nepomukserverrc	2013-03-01 01:19:13.568661816 +0100
+@@ -8,7 +8,3 @@ autostart=false
+ [Service-nepomukfileindexer]
+ autostart=false
+ 
+-[main Settings]
+-Storage Dir[$e]=$HOME/.kde4/share/apps/nepomuk/repository/main/
+-Used Soprano Backend=virtuosobackend
+-rebuilt index for type indexing=true

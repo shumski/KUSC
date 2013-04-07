@@ -1,0 +1,12 @@
+Index: CMakeLists.txt
+===================================================================
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -68,7 +68,6 @@ if(PYQT4_FOUND AND PYQT4_VERSION STRLESS
+ endif(PYQT4_FOUND AND PYQT4_VERSION STRLESS "040400")
+ 
+ macro_optional_find_package(PyKDE4)
+-set(PythonSupport_FOUND TRUE)
+ 
+ #### End Python support ####
+ 

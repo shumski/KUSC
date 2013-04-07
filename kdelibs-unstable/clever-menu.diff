@@ -1,0 +1,281 @@
+Index: kdecore/services/kservice.cpp
+===================================================================
+--- kdecore/services/kservice.cpp.orig
++++ kdecore/services/kservice.cpp
+@@ -739,6 +739,12 @@ QString KService::untranslatedGenericNam
+     return v.isValid() ? v.toString() : QString();
+ }
+ 
++
++bool KService::SuSEunimportant() const {
++    QVariant v = property(QString::fromLatin1("X-SuSE-Unimportant"), QVariant::Bool);
++    return v.isValid() && v.toBool();
++}
++
+ QString KService::parentApp() const {
+     Q_D(const KService);
+     QMap<QString,QVariant>::ConstIterator it = d->m_mapProps.find(QLatin1String("X-KDE-ParentApp"));
+Index: kdecore/services/kservicegroup.cpp
+===================================================================
+--- kdecore/services/kservicegroup.cpp.orig
++++ kdecore/services/kservicegroup.cpp
+@@ -29,7 +29,7 @@
+ #include <ksortablelist.h>
+ #include <kdesktopfile.h>
+ #include <kconfiggroup.h>
+-
++#include <QDir>
+ 
+ KServiceGroup::KServiceGroup( const QString & name )
+  : KSycocaEntry(*new KServiceGroupPrivate(name))
+@@ -61,6 +61,11 @@ void KServiceGroupPrivate::load(const QS
+   m_strComment = config.readEntry( "Comment" );
+   deleted = config.readEntry("Hidden", false );
+   m_bNoDisplay = desktopFile.noDisplay();
++  if (directoryEntryPath.startsWith(QDir::homePath()))
++      m_bShortMenu = false;
++  else
++      m_bShortMenu = config.readEntry( QString::fromLatin1("X-SuSE-AutoShortMenu"), true );
++  m_bGeneralDescription = config.readEntry( QString::fromLatin1("X-SuSE-GeneralDescription"), false );
+   m_strBaseGroupName = config.readEntry( "X-KDE-BaseGroup" );
+   suppressGenericNames = config.readEntry( "X-KDE-SuppressGenericNames", QStringList() );
+ //  d->sortOrder = config.readEntry("SortOrder", QStringList());
+@@ -124,6 +129,10 @@ int KServiceGroupPrivate::childCount() c
+ {
+   if (m_childCount == -1)
+   {
++     KConfig cfg(QString::fromLatin1("kdeglobals"));
++     KConfigGroup global = cfg.group(QString::fromLatin1("KDE"));
++     bool showUnimportant = global.readEntry(QString::fromLatin1("showUnimportant"), false);
++
+      m_childCount = 0;
+ 
+      for( KServiceGroup::List::ConstIterator it = m_serviceList.begin();
+@@ -134,7 +143,8 @@ int KServiceGroupPrivate::childCount() c
+         {
+             KService::Ptr service = KService::Ptr::staticCast( p );
+            if (!service->noDisplay())
+-              m_childCount++;
++               if ( showUnimportant || !service->SuSEunimportant() )
++                   m_childCount++;
+         }
+         else if (p->isType(KST_KServiceGroup))
+         {
+@@ -219,6 +229,18 @@ QStringList KServiceGroup::suppressGener
+   return d->suppressGenericNames;
+ }
+ 
++bool KServiceGroup::SuSEgeneralDescription() const
++{
++    Q_D(const KServiceGroup);
++  return d->m_bGeneralDescription;
++}
++
++bool KServiceGroup::SuSEshortMenu() const
++{
++    Q_D(const KServiceGroup);
++  return d->m_bShortMenu;
++}
++
+ void KServiceGroupPrivate::load( QDataStream& s )
+ {
+   QStringList groupList;
+@@ -227,16 +249,21 @@ void KServiceGroupPrivate::load( QDataSt
+   qint8 inlineHeader;
+   qint8 _inlineAlias;
+   qint8 _allowInline;
++  qint8 _shortMenu;
++  qint8 _generalDescription;
+   s >> m_strCaption >> m_strIcon >>
+       m_strComment >> groupList >> m_strBaseGroupName >> m_childCount >>
+       noDisplay >> suppressGenericNames >> directoryEntryPath >>
+-      sortOrder >> _showEmptyMenu >> inlineHeader >> _inlineAlias >> _allowInline;
++      sortOrder >> _showEmptyMenu >> inlineHeader >> _inlineAlias >> _allowInline >>
++      _shortMenu >> _generalDescription;
+ 
+   m_bNoDisplay = (noDisplay != 0);
+   m_bShowEmptyMenu = ( _showEmptyMenu != 0 );
+   m_bShowInlineHeader = ( inlineHeader != 0 );
+   m_bInlineAlias = ( _inlineAlias != 0 );
+   m_bAllowInline = ( _allowInline != 0 );
++  m_bShortMenu = (_shortMenu != 0);
++  m_bGeneralDescription = (_generalDescription != 0);
+ 
+   if (m_bDeep)
+   {
+@@ -296,10 +323,12 @@ void KServiceGroupPrivate::save( QDataSt
+   qint8 inlineHeader = m_bShowInlineHeader ? 1 : 0;
+   qint8 _inlineAlias = m_bInlineAlias ? 1 : 0;
+   qint8 _allowInline = m_bAllowInline ? 1 : 0;
++  qint8 _shortMenu = m_bShortMenu ? 1 : 0;
+   s << m_strCaption << m_strIcon <<
+       m_strComment << groupList << m_strBaseGroupName << m_childCount <<
+       noDisplay << suppressGenericNames << directoryEntryPath <<
+-      sortOrder <<_showEmptyMenu <<inlineHeader<<_inlineAlias<<_allowInline;
++      sortOrder <<_showEmptyMenu <<inlineHeader<<_inlineAlias<<_allowInline <<
++      _shortMenu << m_bGeneralDescription;
+ }
+ 
+ QList<KServiceGroup::Ptr> KServiceGroup::groupEntries(EntriesOptions options)
+@@ -359,6 +388,13 @@ KServiceGroup::entries(bool sort, bool e
+     return d->entries(this, sort, excludeNoDisplay, allowSeparators, sortByGenericName);
+ }
+ 
++KServiceGroup::List
++KServiceGroup::SuSEsortEntries( KSortableList<KServiceGroup::SPtr,QByteArray> slist, KSortableList<KServiceGroup::SPtr,QByteArray> glist, bool excludeNoDisplay, bool allowSeparators )
++{
++    Q_D(KServiceGroup);
++    return d->SuSEsortEntries( this, slist, glist, excludeNoDisplay, allowSeparators );
++}
++
+ static void addItem(KServiceGroup::List &sorted, const KSycocaEntry::Ptr &p, bool &addSeparator)
+ {
+    if (addSeparator && !sorted.isEmpty())
+@@ -370,6 +406,12 @@ static void addItem(KServiceGroup::List
+ KServiceGroup::List
+ KServiceGroupPrivate::entries(KServiceGroup *group, bool sort, bool excludeNoDisplay, bool allowSeparators, bool sortByGenericName)
+ {
++    return SuSEentries(group, sort, excludeNoDisplay, allowSeparators, sortByGenericName);
++}
++
++KServiceGroup::List
++KServiceGroupPrivate::SuSEentries(KServiceGroup *group, bool sort, bool excludeNoDisplay, bool allowSeparators, bool sortByGenericName, bool excludeSuSEunimportant)
++{
+     KServiceGroup::Ptr grp;
+ 
+     // If the entries haven't been loaded yet, we have to reload ourselves
+@@ -395,11 +437,20 @@ KServiceGroupPrivate::entries(KServiceGr
+     KSortableList<KServiceGroup::SPtr,QByteArray> glist;
+     Q_FOREACH (KSycocaEntry::Ptr p, group->d_func()->m_serviceList)
+     {
++        if ( !p->isType(KST_KServiceGroup) && !p->isType(KST_KService))
++            continue;
++
+         bool noDisplay = p->isType(KST_KServiceGroup) ?
+                                    static_cast<KServiceGroup *>(p.data())->noDisplay() :
+                                    static_cast<KService *>(p.data())->noDisplay();
+         if (excludeNoDisplay && noDisplay)
+            continue;
++
++        bool SuSEunimportant = p->isType(KST_KService) &&
++            static_cast<KService *>(p.data())->SuSEunimportant();
++        if (excludeSuSEunimportant && SuSEunimportant)
++            continue;
++
+         // Choose the right list
+         KSortableList<KServiceGroup::SPtr,QByteArray> & list = p->isType(KST_KServiceGroup) ? glist : slist;
+         QString name;
+@@ -435,6 +486,12 @@ KServiceGroupPrivate::entries(KServiceGr
+         }
+         list.insert(key,KServiceGroup::SPtr(p));
+     }
++    return SuSEsortEntries( group, slist, glist, excludeNoDisplay, allowSeparators );
++}
++
++KServiceGroup::List
++KServiceGroupPrivate::SuSEsortEntries( KServiceGroup *group, KSortableList<KServiceGroup::SPtr,QByteArray> slist, KSortableList<KServiceGroup::SPtr,QByteArray> glist, bool excludeNoDisplay, bool allowSeparators )
++{
+     // Now sort
+     slist.sort();
+     glist.sort();
+@@ -475,6 +532,8 @@ KServiceGroupPrivate::entries(KServiceGr
+            // TODO: This prevents duplicates
+           for(KSortableList<KServiceGroup::SPtr,QByteArray>::Iterator it2 = slist.begin(); it2 != slist.end(); ++it2)
+           {
++             if (!(*it2).value()->isType(KST_KService))
++                continue;
+              const KService::Ptr service = KService::Ptr::staticCast( (*it2).value() );
+              if (service->menuId() == item)
+              {
+Index: kdecore/services/kservicegroup.h
+===================================================================
+--- kdecore/services/kservicegroup.h.orig
++++ kdecore/services/kservicegroup.h
+@@ -22,6 +22,7 @@
+ #include <kdecore_export.h>
+ #include <ksycocaentry.h>
+ #include <kservice.h>
++#include <ksortablelist.h>
+ 
+ class KBuildServiceGroupFactory;
+ 
+@@ -174,6 +175,12 @@ public:
+   void setLayoutInfo(const QStringList &layout);
+ 
+   /**
++   * SuSE special, not part of KDE API
++   */
++  bool SuSEshortMenu() const;
++  bool SuSEgeneralDescription() const;
++
++  /**
+    * @internal
+    * Returns information related to the layout of services in this group.
+    */
+@@ -200,6 +207,12 @@ public:
+   List entries(bool sorted = false);
+ 
+   /**
++   * UNOFFICIAL SuSE special
++   */
++  KServiceGroup::List SuSEsortEntries( KSortableList<KServiceGroup::SPtr,QByteArray> slist, KSortableList<KServiceGroup::SPtr,QByteArray> glist, bool excludeNoDisplay, bool allowSeparators );
++
++
++  /**
+    * options for groupEntries and serviceEntries
+    */
+     enum EntriesOption
+Index: kdecore/services/kservicegroup_p.h
+===================================================================
+--- kdecore/services/kservicegroup_p.h.orig
++++ kdecore/services/kservicegroup_p.h
+@@ -31,7 +31,8 @@ public:
+ 
+     KServiceGroupPrivate(const QString &path) 
+         : KSycocaEntryPrivate(path),
+-          m_bNoDisplay(false), m_bShowEmptyMenu(false), m_bShowInlineHeader(false), m_bInlineAlias(false),
++          m_bNoDisplay(false), m_bShortMenu(false), m_bGeneralDescription(false),
++          m_bShowEmptyMenu(false), m_bShowInlineHeader(false), m_bInlineAlias(false),
+           m_bAllowInline(false), m_inlineValue(4), m_bDeep(false), m_childCount(-1)
+     {
+     }
+@@ -58,6 +59,13 @@ public:
+ 
+     KServiceGroup::List
+     entries(KServiceGroup *group, bool sort, bool excludeNoDisplay, bool allowSeparators, bool sortByGenericName);
++
++    /**
++     * UNOFFICIAL SuSE special
++     */
++    KServiceGroup::List SuSEentries(KServiceGroup *group, bool sort, bool excludeNoDisplay, bool allowSeparators, bool sortByGenericName, bool excludeSuSEunimportant = true);
++    KServiceGroup::List SuSEsortEntries( KServiceGroup *group, KSortableList<KServiceGroup::SPtr,QByteArray> slist, KSortableList<KServiceGroup::SPtr,QByteArray> glist, bool excludeNoDisplay, bool allowSeparators );
++
+   /**
+    * This function parse attributes into menu
+    */
+@@ -65,6 +73,8 @@ public:
+ 
+ 
+     bool m_bNoDisplay : 1;
++    bool m_bShortMenu : 1;
++    bool m_bGeneralDescription : 1;
+     bool m_bShowEmptyMenu : 1;
+     bool m_bShowInlineHeader : 1;
+     bool m_bInlineAlias : 1;
+Index: kdecore/services/kservice.h
+===================================================================
+--- kdecore/services/kservice.h.orig
++++ kdecore/services/kservice.h
+@@ -350,6 +350,12 @@ public:
+     bool noDisplay() const;
+ 
+     /**
++     * check if the application entry is important
++     * SuSE special, not part of KDE API
++     */
++    bool SuSEunimportant() const;
++
++    /**
+      * Whether the service should be shown in KDE at all
+      * (including in context menus).
+      * @return true if the service should be shown.

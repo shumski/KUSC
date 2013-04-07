@@ -1,0 +1,14 @@
+diff -urNB orig.gwenview-4.10.40_20130207/app/gwenview.desktop gwenview-4.10.40_20130207/app/gwenview.desktop
+--- orig.gwenview-4.10.40_20130207/app/gwenview.desktop	2013-02-07 10:31:49.169408310 +0100
++++ gwenview-4.10.40_20130207/app/gwenview.desktop	2013-02-28 17:03:28.981495438 +0100
+@@ -163,9 +163,8 @@
+ Comment[zh_TW]=一個簡單的影像檢視程式
+ Exec=gwenview %U -caption "%c" %i
+ Terminal=false
+-Icon=gwenview
+ Type=Application
+-Categories=Qt;KDE;Graphics;Viewer;Photography;
++Categories=Graphics;RasterGraphics;Viewer;
+ MimeType=inode/directory;image/gif;image/jpeg;image/png;image/bmp;image/x-eps;image/x-ico;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-xbitmap;image/x-xpixmap;image/tiff;
+ X-DocPath=gwenview/index.html
+ # InitialPreference should be greater than Okular so that Gwenview is the

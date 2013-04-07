@@ -1,0 +1,11 @@
+--- resources/CMakeLists.txt.orig	2010-07-17 15:43:52.982914971 +0200
++++ resources/CMakeLists.txt	2010-07-17 15:43:58.658928661 +0200
+@@ -45,7 +45,7 @@
+
+ if (NOT WINCE)
+   add_subdirectory( birthdays )
+-  add_subdirectory( knut )
++  #add_subdirectory( knut )
+   add_subdirectory( mixedmaildir )
+   add_subdirectory( mailtransport_dummy )
+   add_subdirectory( mbox )
