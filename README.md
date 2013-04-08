@@ -1,4 +1,7 @@
-KUSC
+KUSC in /opt
 ====
 
-KUSC
+This repo holds specs for packaging KDE from trunk to the 
+/opt/kde-unstable prefix
+
+WIP
